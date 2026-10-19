@@ -9,6 +9,7 @@
 ## リリース
 
 - GitHub でリリースを公開すると `.github/workflows/release.yml` が動く。プレリリースは `dev`、正式版は `main` の最新から署名付き APK をビルドしてリリースに添付し、リリースノート（Claude の要約 + What's Changed）で本文を上書きする。
+- 署名用の Secret（KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD）は `scripts/setup-release-secrets.ps1` で登録する。
 - PR タイトルはそのまま What's Changed に載るので、`feat:` / `fix:` などの接頭辞を付け、内容が分かる日本語にする。
 
 ## ビルド・確認

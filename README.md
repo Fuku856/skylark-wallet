@@ -78,13 +78,19 @@ GitHub でリリースを手動で公開すると、`.github/workflows/release.y
 | `KEY_PASSWORD` | 鍵のパスワード（必須） |
 | `CLAUDE_CODE_OAUTH_TOKEN` | 要約に使う Claude のトークン（任意。`claude setup-token` で発行）。未設定なら要約なしで What's Changed だけを出します |
 
-keystore はこのアプリ専用のものを作ってください。同じ鍵で署名し続けないとアップデートできないため、ファイルとパスワードは安全な場所に保管してください。
+署名用の4つの Secret は、`scripts/setup-release-secrets.ps1` で keystore の用意から登録までまとめて行えます（Windows PowerShell 5.1 / PowerShell 7）。
 
-```sh
-keytool -genkeypair -v -keystore skylark-release.keystore -alias skylark \
-  -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 skylark-release.keystore   # 出力を KEYSTORE_BASE64 に登録
+```powershell
+# 前提: GitHub CLI でログイン済み（gh auth login）、JDK または Android Studio（keytool）が入っている
+powershell -ExecutionPolicy Bypass -File scripts\setup-release-secrets.ps1
 ```
+
+- keystore が無ければ、このアプリ専用のもの（PKCS12、RSA 4096）を `%USERPROFILE%\keystores\skylark-wallet-release.jks` に作ります。パスワードは実行中に入力します（半角の英数字と記号のみ、6文字以上）。
+- 作成済みの keystore を使うときは `-KeystorePath D:\keys\skylark.jks -KeyAlias skylark` のように指定します。
+- 登録済みの Secret があると上書きしてよいか確認します（`-Force` で確認を省略）。`-WhatIf` を付けると、keystore の確認・作成だけを行い、登録はしません。
+- 値はコマンドラインや一時ファイルに残さず、`gh secret set` の標準入力に直接渡します。
+
+keystore のファイルとパスワードは、必ず安全な場所にバックアップしてください。同じ鍵で署名し続けないと、アプリをアップデートできなくなります。
 
 アプリの変更点ではない PR（紹介ページなど）は、`site` ラベルを付けるとリリースノートから除外されます（`.github/release.yml`）。
 
