@@ -21,4 +21,5 @@
 ./gradlew :app:assembleDebug
 ```
 
+- PR と `dev` / `main` への push では `.github/workflows/ci.yml` が上の3つを実行する。
 - テストのメソッド名は ASCII にする（日本語名だと、ロケールによってはクラスファイルのパスでビルドが失敗する）。
