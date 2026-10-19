@@ -45,8 +45,8 @@ class VoucherSectionsTest {
     }
 
     @Test
-    fun `barcode button falls back to active vouchers when none usable`() {
+    fun `barcode button shows nothing when only expired vouchers remain`() {
         val onlyExpired = VoucherSections.of(listOf(expired, usedOld))
-        assertEquals(listOf("expired"), onlyExpired.barcodeList(null, now).map { it.id })
+        assertEquals(emptyList<String>(), onlyExpired.barcodeList(null, now).map { it.id })
     }
 }

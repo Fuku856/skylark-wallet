@@ -10,7 +10,7 @@ data class VoucherSections(
     /**
      * バーコード画面で並べる券。
      * [initialId] があればその券と同じ区分の券をホームと同じ順で返す。
-     * 無ければ未使用かつ期限内の券を期限の近い順で返し、それも無ければ未使用の券を返す。
+     * 無ければ未使用かつ期限内の券を期限の近い順で返す（期限切れの券は出さない）。
      */
     fun barcodeList(initialId: String?, now: Long): List<Voucher> {
         val active = active.filter { it.barcode13 != null }
@@ -18,7 +18,7 @@ data class VoucherSections(
         return when {
             initialId != null && active.any { it.id == initialId } -> active
             initialId != null && used.any { it.id == initialId } -> used
-            else -> active.filterNot { it.isExpired(now) }.ifEmpty { active }
+            else -> active.filterNot { it.isExpired(now) }
         }
     }
 

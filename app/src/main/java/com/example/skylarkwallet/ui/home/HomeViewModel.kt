@@ -34,6 +34,8 @@ class HomeViewModel @Inject constructor(
         val now: Long = System.currentTimeMillis(),
         /** 復号できず表示できない券の数。 */
         val unreadable: Int = 0,
+        /** バーコードボタン（券を指定しない）で表示できるバーコードがあるか。 */
+        val hasBarcode: Boolean = false,
     )
 
     val state: StateFlow<UiState> = repository.observeVouchers()
@@ -48,6 +50,7 @@ class HomeViewModel @Inject constructor(
                 lastUpdatedAt = vouchers.mapNotNull { it.lastUpdatedAt }.maxOrNull(),
                 now = now,
                 unreadable = unreadable,
+                hasBarcode = sections.barcodeList(null, now).isNotEmpty(),
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())

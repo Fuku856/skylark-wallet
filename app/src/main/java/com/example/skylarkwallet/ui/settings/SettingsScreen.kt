@@ -1,8 +1,6 @@
 package com.example.skylarkwallet.ui.settings
 
 import android.Manifest
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,6 +49,7 @@ import com.example.skylarkwallet.BuildConfig
 import com.example.skylarkwallet.R
 import com.example.skylarkwallet.domain.model.ThemeMode
 import com.example.skylarkwallet.notification.ExpiryNotifier
+import com.example.skylarkwallet.ui.common.openExternalUrl
 import com.example.skylarkwallet.ui.lock.BiometricAuth
 
 @Composable
@@ -152,13 +151,7 @@ fun SettingsScreen(
                     supportingContent = { Text(REPOSITORY_URL) },
                     leadingContent = { Icon(painterResource(R.drawable.ic_github), contentDescription = null) },
                     trailingContent = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        try {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, REPOSITORY_URL.toUri()))
-                        } catch (_: ActivityNotFoundException) {
-                            // 開けるブラウザが無ければ何もしない
-                        }
-                    },
+                    modifier = Modifier.clickable { openExternalUrl(context, REPOSITORY_URL.toUri()) },
                 )
                 Spacer(Modifier.weight(1f))
                 AboutFooter()
