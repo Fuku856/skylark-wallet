@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.skylarkwallet.data.local.crypto.StringCipher
 import com.example.skylarkwallet.data.local.db.VoucherDao
 import com.example.skylarkwallet.data.local.db.VoucherEntity
+import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.domain.model.Voucher
 import com.example.skylarkwallet.domain.model.VoucherResult
 import com.example.skylarkwallet.domain.repository.VoucherRepository
@@ -65,7 +66,7 @@ class VoucherRepositoryImpl @Inject constructor(
 
     override suspend fun markError(id: String, message: String) = dao.updateError(id, message)
 
-    override suspend fun updateMemo(id: String, memo: String) = dao.updateMemo(id, memo.trim())
+    override suspend fun updateMemo(id: String, memo: String) = dao.updateMemo(id, MemoNormalizer.normalize(memo))
 
     override suspend fun getResultHtml(id: String): String? = withContext(Dispatchers.Default) {
         val entity = dao.getById(id) ?: return@withContext null

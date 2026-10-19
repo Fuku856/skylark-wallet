@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.skylarkwallet.R
 import com.example.skylarkwallet.domain.model.Voucher
@@ -53,6 +54,8 @@ import com.example.skylarkwallet.ui.common.Format
 fun VoucherCard(
     voucher: Voucher,
     now: Long,
+    /** false の間は残高を 0 円として表示する（起動直後に総残高と同時にロールさせるため）。 */
+    revealed: Boolean,
     onRefresh: () -> Unit,
     onShowBarcode: () -> Unit,
     onEditMemo: () -> Unit,
@@ -70,11 +73,13 @@ fun VoucherCard(
             .animateContentSize(motion.defaultSpatialSpec()),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row {
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = voucher.memo.ifBlank { stringResource(R.string.voucher_default_name) },
                         style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = stringResource(R.string.voucher_last3, voucher.last3),
@@ -82,56 +87,32 @@ fun VoucherCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (voucher.balance != null) {
+                Spacer(Modifier.width(12.dp))
+                // 残高と、その残高をいつ確認したかをまとめて右側に置く
+                Column(horizontalAlignment = Alignment.End) {
+                    if (voucher.balance != null) {
+                        Row {
+                            val style = MaterialTheme.typography.headlineMedium
+                            RollingYen(if (revealed) voucher.balance else 0, style)
+                            Text(stringResource(R.string.yen_unit), style = style)
+                        }
+                    } else {
+                        Text(
+                            text = stringResource(R.string.balance_unknown),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     Text(
-                        text = stringResource(R.string.yen_format_text, Format.yen(voucher.balance)),
-                        style = MaterialTheme.typography.headlineMedium,
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.balance_unknown),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        text = voucher.lastUpdatedAt?.let { stringResource(R.string.voucher_checked_at, Format.dateTime(it)) }
+                            ?: stringResource(R.string.voucher_tap_to_check),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
 
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val days = voucher.daysUntilExpiry(now)
-                when {
-                    voucher.isExpired(now) -> Pill(
-                        stringResource(R.string.badge_expired),
-                        MaterialTheme.colorScheme.errorContainer,
-                        MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                    !voucher.isUsed && voucher.isExpiringSoon(now) && days != null -> Pill(
-                        stringResource(R.string.badge_expiring, days),
-                        MaterialTheme.colorScheme.errorContainer,
-                        MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
-                if (voucher.needsRefresh(now)) {
-                    Pill(
-                        stringResource(R.string.badge_stale),
-                        MaterialTheme.colorScheme.tertiaryContainer,
-                        MaterialTheme.colorScheme.onTertiaryContainer,
-                    )
-                }
-                if (voucher.lastError != null) {
-                    Pill(
-                        stringResource(R.string.badge_error),
-                        MaterialTheme.colorScheme.error,
-                        MaterialTheme.colorScheme.onError,
-                    )
-                }
-                if (voucher.isUsed) {
-                    Pill(
-                        stringResource(R.string.badge_used),
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            Badges(voucher, now)
 
             voucher.expiryAt?.let {
                 Text(
@@ -139,12 +120,6 @@ fun VoucherCard(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
-            Text(
-                text = voucher.lastUpdatedAt?.let { stringResource(R.string.voucher_checked_at, Format.dateTime(it)) }
-                    ?: stringResource(R.string.voucher_tap_to_check),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             AnimatedVisibility(
                 visible = expanded || !voucher.isChecked,
@@ -179,6 +154,42 @@ fun VoucherCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun Badges(voucher: Voucher, now: Long) {
+    val days = voucher.daysUntilExpiry(now)
+    val expiry = when {
+        voucher.isExpired(now) -> stringResource(R.string.badge_expired)
+        !voucher.isUsed && voucher.isExpiringSoon(now) && days != null -> stringResource(R.string.badge_expiring, days)
+        else -> null
+    }
+    val stale = voucher.needsRefresh(now)
+    val error = voucher.lastError != null
+    if (expiry == null && !stale && !error && !voucher.isUsed) return
+
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        expiry?.let {
+            Pill(it, MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+        }
+        if (stale) {
+            Pill(
+                stringResource(R.string.badge_stale),
+                MaterialTheme.colorScheme.tertiaryContainer,
+                MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+        }
+        if (error) {
+            Pill(stringResource(R.string.badge_error), MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.onError)
+        }
+        if (voucher.isUsed) {
+            Pill(
+                stringResource(R.string.badge_used),
+                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

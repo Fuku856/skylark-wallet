@@ -42,6 +42,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.skylarkwallet.R
 import com.example.skylarkwallet.domain.model.CodeNormalizer
+import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.domain.usecase.RegisterVoucherUseCase
 import kotlinx.coroutines.launch
 
@@ -111,9 +112,10 @@ fun AddCodeSheet(
                 isError = error != null,
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
+                // Password にするとパスワードマネージャがログインフォームと見なし、次のメモ欄に保存済みの値を入れることがある
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    capitalization = KeyboardCapitalization.None,
+                    keyboardType = KeyboardType.Ascii,
+                    capitalization = KeyboardCapitalization.Characters,
                     autoCorrectEnabled = false,
                     imeAction = ImeAction.Next,
                 ),
@@ -137,7 +139,7 @@ fun AddCodeSheet(
             )
             OutlinedTextField(
                 value = memo,
-                onValueChange = { memo = it.take(40) },
+                onValueChange = { memo = MemoNormalizer.sanitizeInput(it) },
                 label = { Text(stringResource(R.string.add_memo_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

@@ -1,15 +1,11 @@
 package com.example.skylarkwallet.ui.home
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,7 +29,6 @@ import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -50,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,7 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.skylarkwallet.R
-import com.example.skylarkwallet.domain.model.Voucher
+import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.ui.common.Format
 
 @Composable
@@ -114,8 +110,14 @@ fun HomeScreen(
                 )
             }
 
+            // よく使うバーコードは FAB に分け、追加・更新はツールバーにまとめる
             HorizontalFloatingToolbar(
                 expanded = true,
+                floatingActionButton = {
+                    FloatingToolbarDefaults.VibrantFloatingActionButton(onClick = { onOpenBarcode(null) }) {
+                        Icon(Icons.Rounded.QrCode2, contentDescription = stringResource(R.string.action_barcode))
+                    }
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -129,12 +131,7 @@ fun HomeScreen(
                 TextButton(onClick = onRefreshAll, enabled = state.active.isNotEmpty()) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.action_refresh_all))
-                }
-                Button(onClick = { onOpenBarcode(null) }, enabled = state.hasBarcode) {
-                    Icon(Icons.Rounded.QrCode2, contentDescription = null)
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.action_barcode))
+                    Text(stringResource(R.string.action_refresh))
                 }
             }
         }
@@ -216,12 +213,16 @@ private fun VoucherList(
     var usedExpanded by rememberSaveable { mutableStateOf(false) }
     val motion = MaterialTheme.motionScheme
 
+    // 読み込み直後は総残高もカードの残高も 0 円で描き、次のフレームで一斉に実際の値へロールさせる
+    var revealed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.loading) { if (!state.loading) revealed = true }
+
     LazyColumn(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        item(key = "hero") { HeroHeader(state.total, state.lastUpdatedAt) }
+        item(key = "hero") { HeroHeader(if (revealed) state.total else 0, state.lastUpdatedAt) }
 
         if (state.unreadable > 0) {
             item(key = "unreadable") { UnreadableNotice(state.unreadable, onDeleteUnreadable) }
@@ -240,6 +241,7 @@ private fun VoucherList(
             VoucherCard(
                 voucher = voucher,
                 now = state.now,
+                revealed = revealed,
                 onRefresh = { onRefreshOne(voucher.id) },
                 onShowBarcode = { onOpenBarcode(voucher.id) },
                 onEditMemo = { onEditMemo(voucher.id) },
@@ -278,6 +280,7 @@ private fun VoucherList(
                             VoucherCard(
                                 voucher = voucher,
                                 now = state.now,
+                                revealed = revealed,
                                 onRefresh = { onRefreshOne(voucher.id) },
                                 onShowBarcode = { onOpenBarcode(voucher.id) },
                                 onEditMemo = { onEditMemo(voucher.id) },
@@ -293,7 +296,6 @@ private fun VoucherList(
 
 @Composable
 private fun HeroHeader(total: Int, lastUpdatedAt: Long?) {
-    val motion = MaterialTheme.motionScheme
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -303,21 +305,7 @@ private fun HeroHeader(total: Int, lastUpdatedAt: Long?) {
         Column(Modifier.padding(24.dp)) {
             Text(stringResource(R.string.hero_label), style = MaterialTheme.typography.titleMedium)
             Row(verticalAlignment = Alignment.Bottom) {
-                // 数値が変わったときに上下にロールさせる
-                AnimatedContent(
-                    targetState = total,
-                    transitionSpec = {
-                        val up = targetState > initialState
-                        (slideInVertically(motion.defaultSpatialSpec()) { if (up) it else -it } + fadeIn(motion.defaultEffectsSpec()))
-                            .togetherWith(
-                                slideOutVertically(motion.defaultSpatialSpec()) { if (up) -it else it } +
-                                    fadeOut(motion.defaultEffectsSpec()),
-                            )
-                    },
-                    label = "total",
-                ) { value ->
-                    Text(Format.yen(value), style = MaterialTheme.typography.displayLarge)
-                }
+                RollingYen(total, MaterialTheme.typography.displayLarge)
                 Spacer(Modifier.width(4.dp))
                 Text(
                     stringResource(R.string.yen_unit),
@@ -380,7 +368,7 @@ private fun MemoDialog(initial: String, onDismiss: () -> Unit, onSave: (String) 
         text = {
             OutlinedTextField(
                 value = memo,
-                onValueChange = { memo = it.take(40) },
+                onValueChange = { memo = MemoNormalizer.sanitizeInput(it) },
                 singleLine = true,
                 label = { Text(stringResource(R.string.add_memo_label)) },
             )

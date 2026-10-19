@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.skylarkwallet.data.local.prefs.SettingsRepository
 import com.example.skylarkwallet.domain.model.Voucher
+import com.example.skylarkwallet.domain.model.VoucherSections
 import com.example.skylarkwallet.domain.repository.VoucherRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,15 +31,8 @@ class BarcodeViewModel @Inject constructor(
     )
 
     val state: StateFlow<UiState> = combine(repository.observeVouchers(), settingsRepository.settings) { all, settings ->
-        val now = System.currentTimeMillis()
-        val withBarcode = all.filter { it.barcode13 != null }.sortedWith(Voucher.ExpiryOrder)
-        // 未使用・期限内を優先して表示する。指定された券がそれ以外なら、その券も含める
-        val usable = withBarcode.filter { !it.isUsed && !it.isExpired(now) }
-        val list = if (initialId == null || usable.any { it.id == initialId }) {
-            usable.ifEmpty { withBarcode }
-        } else {
-            withBarcode
-        }
+        // ホームと同じ区分・同じ順で並べる（使用済みの券から開いたときは使用済みの券だけ）
+        val list = VoucherSections.of(all).barcodeList(initialId, System.currentTimeMillis())
         UiState(
             loading = false,
             vouchers = list,
