@@ -26,7 +26,7 @@ class HomeViewModel @Inject constructor(
         val loading: Boolean = true,
         /** 未使用の券（期限の近い順）。 */
         val active: List<Voucher> = emptyList(),
-        /** 残高0円の券（登録順）。 */
+        /** 残高0円の券（新しく登録したものほど前）。 */
         val used: List<Voucher> = emptyList(),
         /** 未使用・期限内の券の合計残高。 */
         val total: Int = 0,

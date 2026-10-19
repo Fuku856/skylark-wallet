@@ -24,9 +24,9 @@ class VoucherSectionsTest {
     private val sections = VoucherSections.of(listOf(usedNew, later, usedNoBarcode, expired, soon, usedOld))
 
     @Test
-    fun `active is ordered by expiry and used by registration`() {
+    fun `active is ordered by expiry and used by newest registration first`() {
         assertEquals(listOf("expired", "soon", "later"), sections.active.map { it.id })
-        assertEquals(listOf("usedOld", "usedNew", "usedNoBarcode"), sections.used.map { it.id })
+        assertEquals(listOf("usedNoBarcode", "usedNew", "usedOld"), sections.used.map { it.id })
     }
 
     @Test
@@ -36,7 +36,7 @@ class VoucherSectionsTest {
 
     @Test
     fun `barcode from used voucher shows used vouchers only`() {
-        assertEquals(listOf("usedOld", "usedNew"), sections.barcodeList("usedNew", now).map { it.id })
+        assertEquals(listOf("usedNew", "usedOld"), sections.barcodeList("usedNew", now).map { it.id })
     }
 
     @Test

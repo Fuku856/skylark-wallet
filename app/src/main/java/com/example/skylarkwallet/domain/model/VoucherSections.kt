@@ -4,7 +4,7 @@ package com.example.skylarkwallet.domain.model
 data class VoucherSections(
     /** 未使用の券（期限の近い順）。 */
     val active: List<Voucher>,
-    /** 残高0円の券（登録順。新しく登録したものほど後ろ）。 */
+    /** 残高0円の券（新しく登録したものほど前）。 */
     val used: List<Voucher>,
 ) {
     /**
@@ -25,7 +25,7 @@ data class VoucherSections(
     companion object {
         fun of(vouchers: List<Voucher>): VoucherSections = VoucherSections(
             active = vouchers.filterNot { it.isUsed }.sortedWith(Voucher.ExpiryOrder),
-            used = vouchers.filter { it.isUsed }.sortedBy { it.createdAt },
+            used = vouchers.filter { it.isUsed }.sortedByDescending { it.createdAt },
         )
     }
 }
