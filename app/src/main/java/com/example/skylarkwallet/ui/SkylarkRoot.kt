@@ -31,6 +31,7 @@ import com.example.skylarkwallet.ui.captcha.RefreshViewModel
 import com.example.skylarkwallet.ui.common.Format
 import com.example.skylarkwallet.ui.home.HomeScreen
 import com.example.skylarkwallet.ui.onboarding.TermsScreen
+import com.example.skylarkwallet.ui.onboarding.TermsWebViewScreen
 import com.example.skylarkwallet.ui.settings.SettingsScreen
 import com.example.skylarkwallet.ui.settings.SettingsViewModel
 import com.example.skylarkwallet.ui.webview.OfficialViewModel
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 
 private object Routes {
     const val TERMS = "terms"
+    const val TERMS_WEB = "terms_web"
     const val HOME = "home"
     const val SETTINGS = "settings"
     const val BARCODE = "barcode?${BarcodeViewModel.ARG_ID}={${BarcodeViewModel.ARG_ID}}"
@@ -122,6 +124,7 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
             }
             TermsScreen(
                 alreadyAgreed = settings.termsAgreed,
+                onOpenTerms = { navController.navigate(Routes.TERMS_WEB) },
                 onAgree = {
                     settingsViewModel.setTermsAgreed(true)
                     leave()
@@ -131,6 +134,9 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
                     leave()
                 },
             )
+        }
+        composable(Routes.TERMS_WEB) {
+            TermsWebViewScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.HOME) {
             HomeScreen(

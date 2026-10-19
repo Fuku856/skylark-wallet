@@ -18,7 +18,7 @@
     <string name="voucher_tap_to_check">タップして残高を照会</string>
 
     <!-- ホーム -->
-    <string name="hero_label">使える残高の合計</string>
+    <string name="hero_label">総残高</string>
     <string name="hero_updated">最終更新 %1$s</string>
     <string name="hero_not_updated">まだ照会していません</string>
     <string name="empty_title">優待券が登録されていません</string>
@@ -31,7 +31,6 @@
     <string name="badge_used">使用済み</string>
     <string name="action_add">追加</string>
     <string name="action_refresh">更新</string>
-    <string name="action_refresh_all">すべて更新</string>
     <string name="action_barcode">バーコード</string>
     <string name="action_edit_memo">メモを編集</string>
     <string name="action_delete">削除</string>
@@ -93,6 +92,7 @@
     <string name="terms_body">このアプリは、すかいらーく優待券サービスサイトに代わってご優待番号と画像の番号を送信し、残高・有効期限・バーコードを取得します。\n\nサイトの照会には「すかいらーくご優待券ご利用規約」への同意が必要です。内容をご確認のうえ、同意してください。</string>
     <string name="terms_privacy">ご優待番号・バーコード番号・照会結果は端末内で暗号化して保存し、外部のサーバーには送りません。サイトへのアクセスは、照会の操作をしたときだけ行います。</string>
     <string name="terms_open">利用規約を開く</string>
+    <string name="terms_web_title">利用規約</string>
     <string name="terms_checkbox">利用規約に同意する</string>
     <string name="terms_agree">同意して続ける</string>
     <string name="terms_later">同意せずに続ける（照会はできません）</string>
@@ -104,7 +104,7 @@
     <string name="settings_biometric_summary">生体認証または画面ロックで解除します</string>
     <string name="settings_biometric_unavailable">この端末では生体認証・画面ロックが設定されていません</string>
     <string name="settings_brightness">バーコード表示時に明るさを最大にする</string>
-    <string name="settings_brightness_summary">バーコードのタップでも切り替えられます</string>
+    <string name="settings_brightness_summary">バーコード表示時に自動で最大輝度にします</string>
     <string name="settings_notification">有効期限の通知</string>
     <string name="settings_notification_summary">期限の30日前と7日前にお知らせします（サイトにはアクセスしません）</string>
     <string name="settings_terms">サイトの利用規約</string>
@@ -112,13 +112,21 @@
     <string name="settings_terms_not_agreed">未同意（照会できません）</string>
     <string name="settings_privacy">データの保存</string>
     <string name="settings_privacy_summary">ご優待番号・バーコード番号・照会結果は Android Keystore で保護した鍵（AES-256-GCM）で暗号化して保存します。バックアップの対象外です。</string>
-    <string name="settings_version">バージョン</string>
+    <string name="settings_theme">テーマ</string>
+    <string name="settings_theme_system">システム既定</string>
+    <string name="settings_theme_light">ライト</string>
+    <string name="settings_theme_dark">ダーク</string>
+    <string name="settings_github">GitHub</string>
+    <string name="settings_version_format">v%1$s</string>
+    <string name="settings_copyright" translatable="false">Copyright (c) 2026 Fuku856</string>
 
     <!-- ロック -->
     <string name="lock_title">ロックされています</string>
     <string name="lock_unlock">ロックを解除</string>
     <string name="lock_prompt_title">Skylark Wallet のロック解除</string>
     <string name="lock_prompt_subtitle">優待券を表示するには認証してください</string>
+    <string name="lock_enable_prompt_title">起動時のロックを有効にする</string>
+    <string name="lock_enable_prompt_subtitle">ロックを解除できることを確かめるため、認証してください</string>
 
     <!-- 通知 -->
     <string name="notification_channel_expiry">有効期限のお知らせ</string>

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.skylarkwallet.data.local.prefs.SettingsRepository
 import com.example.skylarkwallet.domain.model.AppSettings
+import com.example.skylarkwallet.domain.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ class SettingsViewModel @Inject constructor(
     fun setBiometricLock(enabled: Boolean) = launch { repository.setBiometricLock(enabled) }
     fun setAutoBrightness(enabled: Boolean) = launch { repository.setAutoBrightness(enabled) }
     fun setExpiryNotification(enabled: Boolean) = launch { repository.setExpiryNotification(enabled) }
+    fun setThemeMode(mode: ThemeMode) = launch { repository.setThemeMode(mode) }
 
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }

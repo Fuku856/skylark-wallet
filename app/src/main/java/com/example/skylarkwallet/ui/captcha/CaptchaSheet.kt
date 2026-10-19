@@ -86,11 +86,11 @@ private fun CaptchaContent(
     val awaiting = phase is RefreshViewModel.Phase.AwaitingCaptcha
     val canSubmit = awaiting && RefreshViewModel.CAPTCHA_PATTERN.matches(input)
 
-    LaunchedEffect(awaiting, state.captchaVersion) {
-        if (awaiting) {
-            focusRequester.requestFocus()
-            keyboard?.show()
-        }
+    // 画像の読み込みを待たずにキーボードを出し、シートとキーボードが一緒に上がるようにする。
+    // 読み込み中も入力はできるが、送信は画像が表示されるまでできない
+    LaunchedEffect(state.target.id, state.captchaVersion) {
+        focusRequester.requestFocus()
+        keyboard?.show()
     }
 
     Column(

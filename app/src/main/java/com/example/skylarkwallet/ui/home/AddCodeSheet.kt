@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.skylarkwallet.R
 import com.example.skylarkwallet.domain.model.CodeNormalizer
+import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.domain.usecase.RegisterVoucherUseCase
 import kotlinx.coroutines.launch
 
@@ -62,9 +64,14 @@ fun AddCodeSheet(
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     val ready = CodeNormalizer.isValid(code) && !busy
 
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    // シートの表示と同時にキーボードを出し、シートとキーボードが一緒に上がるようにする
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboard?.show()
+    }
 
     fun register() {
         if (!ready) return
@@ -111,9 +118,10 @@ fun AddCodeSheet(
                 isError = error != null,
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
+                // Password にするとパスワードマネージャがログインフォームと見なし、次のメモ欄に保存済みの値を入れることがある
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    capitalization = KeyboardCapitalization.None,
+                    keyboardType = KeyboardType.Ascii,
+                    capitalization = KeyboardCapitalization.Characters,
                     autoCorrectEnabled = false,
                     imeAction = ImeAction.Next,
                 ),
@@ -137,7 +145,7 @@ fun AddCodeSheet(
             )
             OutlinedTextField(
                 value = memo,
-                onValueChange = { memo = it.take(40) },
+                onValueChange = { memo = MemoNormalizer.sanitizeInput(it) },
                 label = { Text(stringResource(R.string.add_memo_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

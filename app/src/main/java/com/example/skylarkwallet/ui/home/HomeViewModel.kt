@@ -3,6 +3,7 @@ package com.example.skylarkwallet.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.skylarkwallet.domain.model.Voucher
+import com.example.skylarkwallet.domain.model.VoucherSections
 import com.example.skylarkwallet.domain.repository.VoucherRepository
 import com.example.skylarkwallet.domain.usecase.DeleteVoucherUseCase
 import com.example.skylarkwallet.domain.usecase.RegisterVoucherUseCase
@@ -25,7 +26,7 @@ class HomeViewModel @Inject constructor(
         val loading: Boolean = true,
         /** 未使用の券（期限の近い順）。 */
         val active: List<Voucher> = emptyList(),
-        /** 残高0円の券。 */
+        /** 残高0円の券（新しく登録したものほど前）。 */
         val used: List<Voucher> = emptyList(),
         /** 未使用・期限内の券の合計残高。 */
         val total: Int = 0,
@@ -33,20 +34,18 @@ class HomeViewModel @Inject constructor(
         val now: Long = System.currentTimeMillis(),
         /** 復号できず表示できない券の数。 */
         val unreadable: Int = 0,
-    ) {
-        val hasBarcode: Boolean get() = (active + used).any { it.barcode13 != null }
-    }
+    )
 
     val state: StateFlow<UiState> = repository.observeVouchers()
         .combine(repository.observeUnreadableCount()) { vouchers, unreadable ->
             val now = System.currentTimeMillis()
-            val sorted = vouchers.sortedWith(Voucher.ExpiryOrder)
+            val sections = VoucherSections.of(vouchers)
             UiState(
                 loading = false,
-                active = sorted.filterNot { it.isUsed },
-                used = sorted.filter { it.isUsed },
-                total = sorted.filter { it.countsToTotal(now) }.sumOf { it.balance ?: 0 },
-                lastUpdatedAt = sorted.mapNotNull { it.lastUpdatedAt }.maxOrNull(),
+                active = sections.active,
+                used = sections.used,
+                total = vouchers.filter { it.countsToTotal(now) }.sumOf { it.balance ?: 0 },
+                lastUpdatedAt = vouchers.mapNotNull { it.lastUpdatedAt }.maxOrNull(),
                 now = now,
                 unreadable = unreadable,
             )
