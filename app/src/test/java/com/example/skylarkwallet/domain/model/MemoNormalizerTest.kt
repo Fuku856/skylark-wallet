@@ -18,6 +18,16 @@ class MemoNormalizerTest {
     }
 
     @Test
+    fun `input does not leave half of surrogate pair at max length`() {
+        val emoji = "😀"
+        val head = "あ".repeat(MemoNormalizer.MAX_LENGTH - 1)
+        assertEquals(head, MemoNormalizer.sanitizeInput(head + emoji))
+
+        val fits = "あ".repeat(MemoNormalizer.MAX_LENGTH - 2) + emoji
+        assertEquals(fits, MemoNormalizer.sanitizeInput(fits + "い"))
+    }
+
+    @Test
     fun `saved memo collapses spaces and trims`() {
         assertEquals("テスト 2027/03/10 3VPKGAFMW", MemoNormalizer.normalize("  テスト\n2027/03/10\t\t3VPKGAFMW\n"))
         assertEquals("", MemoNormalizer.normalize(" \n "))

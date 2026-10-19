@@ -1,8 +1,5 @@
 package com.example.skylarkwallet.ui.onboarding
 
-import android.annotation.SuppressLint
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.graphics.Bitmap
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
@@ -30,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.skylarkwallet.R
+import com.example.skylarkwallet.ui.common.applySafeSettings
+import com.example.skylarkwallet.ui.common.openExternalUrl
 
 private const val SITE_HOST = "www.skylarkyutaiken.com"
 
@@ -63,7 +62,6 @@ fun TermsWebViewScreen(onBack: () -> Unit) {
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun TermsWebView(onLoadingChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     AndroidView(
@@ -71,26 +69,13 @@ private fun TermsWebView(onLoadingChange: (Boolean) -> Unit, modifier: Modifier 
         factory = { context ->
             WebView(context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-                settings.apply {
-                    // ページ内の折りたたみ表示などに JavaScript を使うため有効にする。ファイル・コンテンツへのアクセスは無効
-                    javaScriptEnabled = true
-                    domStorageEnabled = false
-                    allowFileAccess = false
-                    allowContentAccess = false
-                    javaScriptCanOpenWindowsAutomatically = false
-                    setSupportMultipleWindows(false)
-                    setGeolocationEnabled(false)
-                    saveFormData = false
-                }
+                // ページ内の折りたたみ表示などに JavaScript を使うため有効にする
+                applySafeSettings(javaScriptEnabled = true)
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         val url = request.url
                         if (url.scheme == "https" && url.host == SITE_HOST) return false
-                        try {
-                            view.context.startActivity(Intent(Intent.ACTION_VIEW, url))
-                        } catch (_: ActivityNotFoundException) {
-                            // 開けるアプリが無ければ何もしない
-                        }
+                        openExternalUrl(view.context, url)
                         return true
                     }
 

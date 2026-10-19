@@ -1,6 +1,5 @@
 package com.example.skylarkwallet.ui.webview
 
-import android.annotation.SuppressLint
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -32,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.skylarkwallet.R
 import com.example.skylarkwallet.ui.common.Format
 import com.example.skylarkwallet.ui.common.SecureWindow
+import com.example.skylarkwallet.ui.common.applySafeSettings
 
 private const val BASE_URL = "https://www.skylarkyutaiken.com/"
 
@@ -82,7 +82,6 @@ fun OfficialWebViewScreen(
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun SnapshotWebView(html: String, modifier: Modifier = Modifier) {
     AndroidView(
@@ -90,21 +89,13 @@ private fun SnapshotWebView(html: String, modifier: Modifier = Modifier) {
         factory = { context ->
             WebView(context).apply {
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                // 結果画面の時計表示などに JavaScript を使う可能性があるため有効にする。ページ遷移はすべて止める
+                applySafeSettings(javaScriptEnabled = true)
                 settings.apply {
-                    // 結果画面の時計表示などに JavaScript を使う可能性があるため有効にする。
-                    // ファイル・コンテンツへのアクセスは無効にし、ページ遷移はすべて止める
-                    javaScriptEnabled = true
-                    domStorageEnabled = false
-                    allowFileAccess = false
-                    allowContentAccess = false
-                    javaScriptCanOpenWindowsAutomatically = false
-                    setSupportMultipleWindows(false)
-                    setGeolocationEnabled(false)
                     useWideViewPort = true
                     loadWithOverviewMode = true
                     builtInZoomControls = true
                     displayZoomControls = false
-                    saveFormData = false
                 }
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true

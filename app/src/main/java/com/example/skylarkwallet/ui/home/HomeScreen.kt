@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -111,18 +112,11 @@ fun HomeScreen(
             }
 
             // よく使うバーコードは FAB に分け、追加・更新はツールバーにまとめる
-            HorizontalFloatingToolbar(
-                expanded = true,
-                floatingActionButton = {
-                    FloatingToolbarDefaults.VibrantFloatingActionButton(onClick = { onOpenBarcode(null) }) {
-                        Icon(Icons.Rounded.QrCode2, contentDescription = stringResource(R.string.action_barcode))
-                    }
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = FloatingToolbarDefaults.ScreenOffset),
-            ) {
+            val toolbarModifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = FloatingToolbarDefaults.ScreenOffset)
+            val toolbarContent: @Composable RowScope.() -> Unit = {
                 TextButton(onClick = { showAdd = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
@@ -133,6 +127,21 @@ fun HomeScreen(
                     Spacer(Modifier.width(4.dp))
                     Text(stringResource(R.string.action_refresh))
                 }
+            }
+            // FAB は無効にできないので、表示できるバーコードが無いときは出さない
+            if (state.hasBarcode) {
+                HorizontalFloatingToolbar(
+                    expanded = true,
+                    floatingActionButton = {
+                        FloatingToolbarDefaults.VibrantFloatingActionButton(onClick = { onOpenBarcode(null) }) {
+                            Icon(Icons.Rounded.QrCode2, contentDescription = stringResource(R.string.action_barcode))
+                        }
+                    },
+                    modifier = toolbarModifier,
+                    content = toolbarContent,
+                )
+            } else {
+                HorizontalFloatingToolbar(expanded = true, modifier = toolbarModifier, content = toolbarContent)
             }
         }
     }
