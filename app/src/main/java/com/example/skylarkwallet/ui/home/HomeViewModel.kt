@@ -1,0 +1,62 @@
+package com.example.skylarkwallet.ui.home
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.skylarkwallet.domain.model.Voucher
+import com.example.skylarkwallet.domain.repository.VoucherRepository
+import com.example.skylarkwallet.domain.usecase.DeleteVoucherUseCase
+import com.example.skylarkwallet.domain.usecase.RegisterVoucherUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: VoucherRepository,
+    private val registerVoucher: RegisterVoucherUseCase,
+    private val deleteVoucher: DeleteVoucherUseCase,
+) : ViewModel() {
+
+    data class UiState(
+        val loading: Boolean = true,
+        /** 未使用の券（期限の近い順）。 */
+        val active: List<Voucher> = emptyList(),
+        /** 残高0円の券。 */
+        val used: List<Voucher> = emptyList(),
+        /** 未使用・期限内の券の合計残高。 */
+        val total: Int = 0,
+        val lastUpdatedAt: Long? = null,
+        val now: Long = System.currentTimeMillis(),
+    ) {
+        val hasBarcode: Boolean get() = (active + used).any { it.barcode13 != null }
+    }
+
+    val state: StateFlow<UiState> = repository.observeVouchers()
+        .map { vouchers ->
+            val now = System.currentTimeMillis()
+            val sorted = vouchers.sortedWith(Voucher.ExpiryOrder)
+            UiState(
+                loading = false,
+                active = sorted.filterNot { it.isUsed },
+                used = sorted.filter { it.isUsed },
+                total = sorted.filter { it.countsToTotal(now) }.sumOf { it.balance ?: 0 },
+                lastUpdatedAt = sorted.mapNotNull { it.lastUpdatedAt }.maxOrNull(),
+                now = now,
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
+
+    suspend fun register(code: String, memo: String): RegisterVoucherUseCase.Result = registerVoucher(code, memo)
+
+    fun updateMemo(id: String, memo: String) {
+        viewModelScope.launch { repository.updateMemo(id, memo) }
+    }
+
+    fun delete(id: String) {
+        viewModelScope.launch { deleteVoucher(id) }
+    }
+}
