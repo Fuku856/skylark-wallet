@@ -1,0 +1,175 @@
+name: Build Release APK
+
+# GitHub 上で手動でリリースを公開（publish）したときに発火する
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write # リリース本文の更新とアセットのアップロードに必要
+
+jobs:
+  # PR 一覧から変更履歴（What's Changed）を自動生成し、本文を常に上書きする。
+  # さらに PR 一覧を Claude に渡して、利用者向けの新機能・改善点の要約を先頭に付ける。
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate and overwrite release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          REPO: ${{ github.repository }}
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          # 要約の生成に使う Claude Pro/Max サブスクの OAuth トークン（API クレジット不要）。
+          # 未設定でも What's Changed と Full Changelog は出力される。
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # 比較元（前回リリース）を明示する。省略すると GitHub が古いタグを選び、
+          # 前回までにリリース済みの PR まで変更点に混ざるため。
+          # プレリリースは直前のリリース（ベータ含む）、正式版は直前の正式版と比較する。
+          prev=$(gh release list --repo "$REPO" --exclude-drafts --limit 100 \
+            --json tagName,isPrerelease,publishedAt \
+            | jq -r --arg tag "$TAG" --arg at "$PUBLISHED_AT" --arg pre "$PRERELEASE" '
+                [.[] | select(.tagName != $tag and .publishedAt < $at
+                              and ($pre == "true" or .isPrerelease == false))]
+                | sort_by(.publishedAt) | last | .tagName // empty')
+          args=(-f tag_name="$TAG")
+          if [ -n "$prev" ]; then
+            args+=(-f previous_tag_name="$prev")
+          fi
+          echo "previous tag: ${prev:-(auto)}"
+
+          notes=$(gh api -X POST "repos/$REPO/releases/generate-notes" \
+            "${args[@]}" --jq '.body // empty')
+          # 空の本文で上書きするとリリース本文が消えるため、空なら何もしない
+          [ -n "$notes" ] || { echo "generate-notes returned empty body; skipping."; exit 0; }
+
+          # --- Claude で利用者向けの要約を作る ---
+          # トークンが無い・呼び出しに失敗した場合は要約を諦め、What's Changed だけで続行する。
+          summary=""
+          if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+            # $'...' で改行を含む 1 行の文字列にし、YAML ブロックのインデントを崩さない
+            instructions=$'あなたは Android アプリ「Skylark Wallet」（すかいらーく優待券の残高管理・バーコード表示アプリ）のリリース担当です。以下は GitHub が自動生成したリリースノート（PR 一覧）です。これを読み、アプリの利用者（エンドユーザー）向けに、今回の変更点を日本語の箇条書きで要約してください。\n\n出力ルール:\n- Markdown のみを出力し、前置きや結びの文章は書かない。\n- 見出しは「### 新機能」「### 改善・修正」の 2 つを使う（該当する変更が無い見出しは省略）。\n- 各項目は体言止め（名詞で終える）で統一する。「〜しました」「〜した」「〜なった」などの述語で終えない。例:「ダークモード時に取り消しトーストが明るい帯で表示される問題の修正」。\n- PR から確認できる事実だけを書く。推測や誇張、効果・利点の主観的な説明（例:「〜しやすくなった」）は書かない。\n- 1 項目につき変更 1 つを簡潔に書き、PR タイトルをそのまま転記せず平易な日本語にする。\n- 絵文字は使わない。\n- CI / GitHub Actions / ドキュメント / リファクタリングなど、利用者に関係しない内部的な変更は含めない。\n- 各見出しの項目は最大 6 個程度に収め、重要なものを優先する。\n- 利用者向けの変更が 1 つも無い場合は、何も出力しない。'
+
+            # OAuth トークン（Claude Code）で /v1/messages を使う場合、system は
+            # Claude Code の識別文だけにする。要約の指示は user メッセージに入れる。
+            identity="You are Claude Code, Anthropic's official CLI for Claude."
+
+            # jq でペイロードを安全に組み立てる（改行や記号を含む notes をそのまま埋め込む）
+            jq -n --arg id "$identity" --arg ins "$instructions" --arg notes "$notes" \
+              '{model: "claude-opus-5-5", max_tokens: 16000,
+                output_config: {effort: "low"},
+                system: [{type: "text", text: $id}],
+                messages: [{role: "user",
+                  content: ($ins + "\n\n以下が GitHub 自動生成のリリースノートです:\n\n" + $notes)}]}' > payload.json
+
+            # 安全性の判定で断られた場合に別モデルで再実行する（fallbacks: "default"）。
+            # OAuth トークンでこの beta が使えずエラーになったら、付けずに 1 回だけやり直す。
+            call_claude() {
+              curl -sS https://api.anthropic.com/v1/messages \
+                -H "Authorization: Bearer $CLAUDE_CODE_OAUTH_TOKEN" \
+                -H "anthropic-version: 2023-06-01" \
+                -H "anthropic-beta: $1" \
+                -H "content-type: application/json" \
+                -d @"$2" || true
+            }
+            jq '. + {fallbacks: "default"}' payload.json > payload-fallback.json
+            resp=$(call_claude "oauth-2025-04-20,server-side-fallback-2026-07-01" payload-fallback.json)
+            if [ "$(printf '%s' "$resp" | jq -r '.type // empty' 2>/dev/null || true)" = "error" ]; then
+              echo "retrying without fallbacks: $(printf '%s' "$resp" | jq -r '.error.message // empty')"
+              resp=$(call_claude "oauth-2025-04-20" payload.json)
+            fi
+
+            # 正常終了（end_turn）のときだけ text ブロックを使う。断られた・途中で切れた場合は使わない。
+            stop=$(printf '%s' "$resp" | jq -r '.stop_reason // empty' 2>/dev/null || true)
+            if [ "$stop" = "end_turn" ]; then
+              summary=$(printf '%s' "$resp" \
+                | jq -r '[.content[]? | select(.type == "text") | .text] | join("")' 2>/dev/null || true)
+            else
+              echo "summary skipped (stop_reason: ${stop:-none}): $(printf '%s' "$resp" | jq -r '.error.message // empty' 2>/dev/null || true)"
+            fi
+          fi
+
+          # 要約があれば先頭に差し込み、区切り線を挟んで What's Changed を続ける
+          {
+            echo "## $TAG の変更点"
+            echo
+            if [ -n "$summary" ]; then
+              printf '%s\n' "$summary"
+              echo
+              echo "---"
+              echo
+            fi
+            printf '%s\n' "$notes"
+          } > notes.md
+
+          # checkout していないため --repo でリポジトリを明示する
+          gh release edit "$TAG" --repo "$REPO" --notes-file notes.md
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # プレリリース（ベータ）は dev の最新、正式版は main の最新をビルドする
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.prerelease && 'dev' || 'main' }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # compileSdk 37 のプラットフォームがランナーに無い場合に備えて入れておく
+      - name: Install Android platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" > /dev/null
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret KEYSTORE_BASE64 が未設定です。署名なしの APK はインストールできないため中止します（README のリリース手順を参照）。"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      # タグ（例: v1.0.0-beta1）はファイル名に、先頭の v を除いた値を versionName に使う。
+      # イベントの値はシェルに直接展開せず env 経由で受け取る。
+      - name: Resolve version
+        id: ver
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "name=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.ver.outputs.name }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew :app:assembleRelease
+
+      - name: Rename APK
+        env:
+          TAG_NAME: ${{ steps.ver.outputs.tag }}
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/skylark-wallet_${TAG_NAME}.apk"
+
+      - name: Upload APK to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.ver.outputs.tag }}
+        run: gh release upload "$TAG_NAME" "dist/skylark-wallet_${TAG_NAME}.apk" --repo "$GITHUB_REPOSITORY" --clobber

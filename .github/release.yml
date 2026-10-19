@@ -1,0 +1,6 @@
+# リリースノート自動生成（generate-notes API）の設定。
+# アプリの変更点ではない PR（紹介ページなど）は site ラベルを付けて除外する。
+changelog:
+  exclude:
+    labels:
+      - site

@@ -13,12 +13,29 @@ android {
         applicationId = "com.example.skylarkwallet"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // リリース時は CI がタグから渡す（ローカルでは既定値）
+        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            // keystore は CI で Secret から復号して KEYSTORE_FILE に渡される
+            System.getenv("KEYSTORE_FILE")?.let { path ->
+                storeFile = file(path)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
+            // KEYSTORE_FILE があるときだけ署名する（ローカルでは未署名の release をビルドできるように）
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

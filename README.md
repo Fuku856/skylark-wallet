@@ -61,6 +61,33 @@ app/src/main/java/com/example/skylarkwallet/
 ./gradlew :app:lintDebug
 ```
 
+## リリース
+
+GitHub でリリースを手動で公開すると、`.github/workflows/release.yml` が次の処理を行います。
+
+1. **APK のビルドと添付**: 「Set as a pre-release」にチェックしたリリース（ベータ）は `dev` の最新、正式版は `main` の最新から署名付き APK をビルドし、`skylark-wallet_<タグ>.apk` としてリリースに添付します。versionName はタグから先頭の `v` を除いた値（例 `v1.0.0-beta1` → `1.0.0-beta1`）、versionCode はワークフローの実行番号です。
+2. **リリースノートの自動生成**: 前回のリリース（ベータは直前のリリース、正式版は直前の正式版）からの PR 一覧で What's Changed と Full Changelog を作ります。さらに Claude が利用者向けの要約（新機能／改善・修正）を作り、本文の先頭に付けます。
+
+### 必要な Secret（Settings → Secrets and variables → Actions）
+
+| Secret | 内容 |
+|---|---|
+| `KEYSTORE_BASE64` | 署名用 keystore を Base64 にしたもの（必須） |
+| `KEYSTORE_PASSWORD` | keystore のパスワード（必須） |
+| `KEY_ALIAS` | 鍵のエイリアス（必須） |
+| `KEY_PASSWORD` | 鍵のパスワード（必須） |
+| `CLAUDE_CODE_OAUTH_TOKEN` | 要約に使う Claude のトークン（任意。`claude setup-token` で発行）。未設定なら要約なしで What's Changed だけを出します |
+
+keystore はこのアプリ専用のものを作ってください。同じ鍵で署名し続けないとアップデートできないため、ファイルとパスワードは安全な場所に保管してください。
+
+```sh
+keytool -genkeypair -v -keystore skylark-release.keystore -alias skylark \
+  -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 skylark-release.keystore   # 出力を KEYSTORE_BASE64 に登録
+```
+
+アプリの変更点ではない PR（紹介ページなど）は、`site` ラベルを付けるとリリースノートから除外されます（`.github/release.yml`）。
+
 ## セキュリティ
 
 - 9桁・13桁・結果 HTML は平文で保存しません（Tink AEAD、associated data に券の ID）。
