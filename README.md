@@ -10,7 +10,7 @@
 ## 構成
 
 ```text
-app/src/main/java/com/example/skylarkwallet/
+app/src/main/java/app/skylark/wallet/
  ├── data/
  │    ├── local/crypto/     # Tink + Android Keystore（AES-256-GCM, AAD = 券の ID）
  │    ├── local/db/         # Room（VoucherEntity / VoucherDao）

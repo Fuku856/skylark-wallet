@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.skylarkwallet"
+    namespace = "app.skylark.wallet"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.skylarkwallet"
+        applicationId = "app.skylark.wallet"
         minSdk = 28
         targetSdk = 35
         // リリース時は CI がタグから渡す（ローカルでは既定値）
