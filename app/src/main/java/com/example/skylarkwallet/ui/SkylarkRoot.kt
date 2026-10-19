@@ -1,7 +1,12 @@
 package com.example.skylarkwallet.ui
 
+import androidx.activity.BackEventCompat
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +42,8 @@ import com.example.skylarkwallet.ui.settings.SettingsViewModel
 import com.example.skylarkwallet.ui.webview.OfficialViewModel
 import com.example.skylarkwallet.ui.webview.OfficialWebViewScreen
 import kotlinx.coroutines.launch
+
+private const val PREDICTIVE_BACK_MILLIS = 300
 
 private object Routes {
     const val TERMS = "terms"
@@ -100,6 +107,15 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     val motion = MaterialTheme.motionScheme
     val slideSpec = motion.defaultSpatialSpec<IntOffset>()
     val fadeSpec = motion.defaultEffectsSpec<Float>()
+    // 予測型戻るではジェスチャーの進み具合がそのまま再生位置になるため、ばねではなく一定速度で動かす
+    val predictiveScaleSpec = tween<Float>(PREDICTIVE_BACK_MILLIS, easing = LinearEasing)
+    val predictiveOffsetSpec = tween<IntOffset>(PREDICTIVE_BACK_MILLIS, easing = LinearEasing)
+    // ジェスチャーの途中では透けないよう、終わり際だけで消す
+    val predictiveFadeSpec = tween<Float>(
+        durationMillis = PREDICTIVE_BACK_MILLIS / 3,
+        delayMillis = PREDICTIVE_BACK_MILLIS * 2 / 3,
+        easing = LinearEasing,
+    )
 
     // 開始画面は最初の表示時に決める（同意後に NavHost のグラフを作り直さないため）
     val startDestination = remember { if (settings.termsPrompted) Routes.HOME else Routes.TERMS }
@@ -111,6 +127,14 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
         exitTransition = { fadeOut(fadeSpec) },
         popEnterTransition = { fadeIn(fadeSpec) },
         popExitTransition = { slideOutHorizontally(slideSpec) { it / 4 } + fadeOut(fadeSpec) },
+        // 戻るジェスチャー中は、戻り先の画面を後ろに出したまま今の画面を縮め、指の動く向きへ少し寄せる
+        predictivePopEnterTransition = { EnterTransition.None },
+        predictivePopExitTransition = { swipeEdge ->
+            val direction = if (swipeEdge == BackEventCompat.EDGE_RIGHT) -1 else 1
+            scaleOut(predictiveScaleSpec, targetScale = 0.9f) +
+                slideOutHorizontally(predictiveOffsetSpec) { direction * it / 8 } +
+                fadeOut(predictiveFadeSpec)
+        },
     ) {
         composable(Routes.TERMS) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
