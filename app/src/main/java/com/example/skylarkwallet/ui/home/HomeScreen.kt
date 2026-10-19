@@ -79,6 +79,7 @@ fun HomeScreen(
     var showAdd by rememberSaveable { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
+    var deletingUnreadable by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -109,6 +110,7 @@ fun HomeScreen(
                     onOpenBarcode = onOpenBarcode,
                     onEditMemo = { editing = it },
                     onDelete = { deleting = it },
+                    onDeleteUnreadable = { deletingUnreadable = true },
                 )
             }
 
@@ -162,6 +164,20 @@ fun HomeScreen(
             )
         }
     }
+    if (deletingUnreadable) {
+        AlertDialog(
+            onDismissRequest = { deletingUnreadable = false },
+            title = { Text(stringResource(R.string.unreadable_delete_title)) },
+            text = { Text(stringResource(R.string.unreadable_delete_message, state.unreadable)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteUnreadable()
+                    deletingUnreadable = false
+                }) { Text(stringResource(R.string.action_delete)) }
+            },
+            dismissButton = { TextButton(onClick = { deletingUnreadable = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
     deleting?.let { id ->
         all.firstOrNull { it.id == id }?.let { voucher ->
             AlertDialog(
@@ -195,6 +211,7 @@ private fun VoucherList(
     onOpenBarcode: (String?) -> Unit,
     onEditMemo: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onDeleteUnreadable: () -> Unit,
 ) {
     var usedExpanded by rememberSaveable { mutableStateOf(false) }
     val motion = MaterialTheme.motionScheme
@@ -205,6 +222,10 @@ private fun VoucherList(
         modifier = Modifier.fillMaxSize(),
     ) {
         item(key = "hero") { HeroHeader(state.total, state.lastUpdatedAt) }
+
+        if (state.unreadable > 0) {
+            item(key = "unreadable") { UnreadableNotice(state.unreadable, onDeleteUnreadable) }
+        }
 
         if (!state.loading && state.active.isEmpty() && state.used.isEmpty()) {
             item(key = "empty") { EmptyState() }
@@ -309,6 +330,24 @@ private fun HeroHeader(total: Int, lastUpdatedAt: Long?) {
                     ?: stringResource(R.string.hero_not_updated),
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+    }
+}
+
+/** 復号できない券があることを知らせる。端末の暗号鍵が無効になると、保存した番号は二度と読めない。 */
+@Composable
+private fun UnreadableNotice(count: Int, onDelete: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(start = 20.dp, end = 12.dp, top = 16.dp, bottom = 8.dp)) {
+            Text(stringResource(R.string.unreadable_message, count), style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onDelete, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.unreadable_delete_action))
+            }
         }
     }
 }

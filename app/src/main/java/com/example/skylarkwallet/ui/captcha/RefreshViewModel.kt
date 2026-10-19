@@ -67,7 +67,13 @@ class RefreshViewModel @Inject constructor(
     sealed interface Event {
         data class Updated(val voucher: Voucher, val balance: Int) : Event
         data class BatchFinished(val succeeded: Int, val total: Int) : Event
-        data class Failed(@StringRes val message: Int, val detail: String? = null, val canRetry: Boolean = false) : Event
+        data class Failed(
+            @StringRes val message: Int,
+            val detail: String? = null,
+            val canRetry: Boolean = false,
+            /** 一括更新が途中で止まったときの、それまでの成功数。 */
+            val batchProgress: BatchFinished? = null,
+        ) : Event
         data class OpenOfficial(val voucherId: String) : Event
         data object TermsRequired : Event
     }
@@ -81,6 +87,9 @@ class RefreshViewModel @Inject constructor(
     val events = _events.receiveAsFlow()
 
     private var job: Job? = null
+
+    /** 照会を始める準備（DB 読み込み）中のジョブ。この間に次の照会を受け付けないために使う。 */
+    private var starting: Job? = null
     private var session: LookupSession? = null
     private var mode = Mode.Single
     private var queue: List<Voucher> = emptyList()
@@ -89,14 +98,19 @@ class RefreshViewModel @Inject constructor(
     private var captchaVersion = 0
 
     /** ネットワークエラー時の「再試行」で、中断した券から再開するための記録。 */
-    private var retryPoint: Triple<Mode, List<Voucher>, Int>? = null
+    private data class RetryPoint(val mode: Mode, val queue: List<Voucher>, val index: Int, val succeeded: Int)
+
+    private var retryPoint: RetryPoint? = null
 
     val isActive: Boolean get() = _state.value is UiState.Active
 
+    /** 照会中、または照会を始める準備中か。 */
+    private val isBusy: Boolean get() = isActive || starting?.isActive == true
+
     /** 1枚を照会する。[official] のときは成功後に公式画面（WebView）を開く。 */
     fun refreshOne(voucherId: String, official: Boolean = false) {
-        if (isActive) return
-        viewModelScope.launch {
+        if (isBusy) return
+        starting = viewModelScope.launch {
             val voucher = voucherRepository.getVoucher(voucherId) ?: return@launch
             begin(if (official) Mode.Official else Mode.Single, listOf(voucher), 0)
         }
@@ -104,8 +118,8 @@ class RefreshViewModel @Inject constructor(
 
     /** 使用済み・期限切れを除いた券を期限の近い順に1枚ずつ照会する。 */
     fun refreshAll() {
-        if (isActive) return
-        viewModelScope.launch {
+        if (isBusy) return
+        starting = viewModelScope.launch {
             val now = System.currentTimeMillis()
             val targets = voucherRepository.getVouchers()
                 .filter { it.isRefreshTarget(now) }
@@ -119,21 +133,22 @@ class RefreshViewModel @Inject constructor(
     }
 
     fun retry() {
-        val (retryMode, retryQueue, retryIndex) = retryPoint ?: return
-        if (isActive) return
-        viewModelScope.launch { begin(retryMode, retryQueue, retryIndex) }
+        val point = retryPoint ?: return
+        if (isBusy) return
+        starting = viewModelScope.launch { begin(point.mode, point.queue, point.index, point.succeeded) }
     }
 
-    private suspend fun begin(newMode: Mode, newQueue: List<Voucher>, startIndex: Int) {
+    private suspend fun begin(newMode: Mode, newQueue: List<Voucher>, startIndex: Int, startSucceeded: Int = 0) {
         if (!settingsRepository.current().termsAgreed) {
             _events.send(Event.TermsRequired)
             return
         }
         retryPoint = null
+        job?.cancel()
         mode = newMode
         queue = newQueue
         index = startIndex
-        succeeded = 0
+        succeeded = startSucceeded
         startCurrent()
     }
 
@@ -199,11 +214,11 @@ class RefreshViewModel @Inject constructor(
                         if (mode == Mode.Batch) next() else finish()
                     }
                     LookupOutcome.Maintenance -> {
-                        _events.send(Event.Failed(R.string.error_maintenance))
+                        _events.send(Event.Failed(R.string.error_maintenance, batchProgress = batchProgress()))
                         finish()
                     }
                     LookupOutcome.ParseFailure -> {
-                        _events.send(Event.Failed(R.string.error_parse))
+                        _events.send(Event.Failed(R.string.error_parse, batchProgress = batchProgress()))
                         finish()
                     }
                 }
@@ -253,15 +268,20 @@ class RefreshViewModel @Inject constructor(
         )
     }
 
+    /** 一括更新が途中で止まるとき、それまでに更新できた枚数（1枚も無ければ null）。 */
+    private fun batchProgress(): Event.BatchFinished? =
+        if (mode == Mode.Batch && succeeded > 0) Event.BatchFinished(succeeded, queue.size) else null
+
     private suspend fun fail(e: Exception) {
+        val progress = batchProgress()
         val event = when (e) {
-            is SiteMaintenanceException -> Event.Failed(R.string.error_maintenance)
-            is UnexpectedPageException -> Event.Failed(R.string.error_parse)
+            is SiteMaintenanceException -> Event.Failed(R.string.error_maintenance, batchProgress = progress)
+            is UnexpectedPageException -> Event.Failed(R.string.error_parse, batchProgress = progress)
             is IOException -> {
-                retryPoint = Triple(mode, queue, index)
-                Event.Failed(R.string.error_network, canRetry = true)
+                retryPoint = RetryPoint(mode, queue, index, succeeded)
+                Event.Failed(R.string.error_network, canRetry = true, batchProgress = progress)
             }
-            else -> Event.Failed(R.string.error_unknown)
+            else -> Event.Failed(R.string.error_unknown, batchProgress = progress)
         }
         _events.send(event)
         finish()

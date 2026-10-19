@@ -75,8 +75,13 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
                     )
                 }
                 is RefreshViewModel.Event.Failed -> scope.launch {
-                    val message = listOfNotNull(resources.getString(event.message), event.detail?.takeIf { it.isNotBlank() })
-                        .joinToString("\n")
+                    val message = listOfNotNull(
+                        resources.getString(event.message),
+                        event.detail?.takeIf { it.isNotBlank() },
+                        event.batchProgress?.let {
+                            resources.getString(R.string.refresh_batch_finished, it.succeeded, it.total)
+                        },
+                    ).joinToString("\n")
                     val result = snackbarHostState.showSnackbar(
                         message = message,
                         actionLabel = if (event.canRetry) resources.getString(R.string.retry) else null,
@@ -107,8 +112,11 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     ) {
         composable(Routes.TERMS) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
+            // 初回起動では TERMS が開始画面で戻り先が無いため、pop せずに HOME へ置き換える
             val leave = {
-                if (!navController.popBackStack()) {
+                if (navController.previousBackStackEntry != null) {
+                    navController.popBackStack()
+                } else {
                     navController.navigate(Routes.HOME) { popUpTo(Routes.TERMS) { inclusive = true } }
                 }
             }

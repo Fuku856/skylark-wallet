@@ -9,7 +9,7 @@ import com.example.skylarkwallet.domain.usecase.RegisterVoucherUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,12 +31,14 @@ class HomeViewModel @Inject constructor(
         val total: Int = 0,
         val lastUpdatedAt: Long? = null,
         val now: Long = System.currentTimeMillis(),
+        /** 復号できず表示できない券の数。 */
+        val unreadable: Int = 0,
     ) {
         val hasBarcode: Boolean get() = (active + used).any { it.barcode13 != null }
     }
 
     val state: StateFlow<UiState> = repository.observeVouchers()
-        .map { vouchers ->
+        .combine(repository.observeUnreadableCount()) { vouchers, unreadable ->
             val now = System.currentTimeMillis()
             val sorted = vouchers.sortedWith(Voucher.ExpiryOrder)
             UiState(
@@ -46,6 +48,7 @@ class HomeViewModel @Inject constructor(
                 total = sorted.filter { it.countsToTotal(now) }.sumOf { it.balance ?: 0 },
                 lastUpdatedAt = sorted.mapNotNull { it.lastUpdatedAt }.maxOrNull(),
                 now = now,
+                unreadable = unreadable,
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
@@ -58,5 +61,9 @@ class HomeViewModel @Inject constructor(
 
     fun delete(id: String) {
         viewModelScope.launch { deleteVoucher(id) }
+    }
+
+    fun deleteUnreadable() {
+        viewModelScope.launch { repository.deleteUnreadable() }
     }
 }

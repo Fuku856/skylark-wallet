@@ -66,11 +66,14 @@ object ResultParser {
         val formShown = doc.selectFirst("input[name=${InputForm.DEFAULT_CAPTCHA_FIELD}]") != null ||
             doc.selectFirst("img[src*=captcha]") != null
         if (formShown) {
-            val message = doc.select(SELECTOR_ERROR).joinToString("\n") { it.text().trim() }.ifBlank { null }
-            return when {
-                message == null -> Outcome.CaptchaMismatch(null)
-                message.contains("画像") || message.contains("認証") -> Outcome.CaptchaMismatch(message)
-                else -> Outcome.InvalidCode(message)
+            val messages = doc.select(SELECTOR_ERROR).map { it.text().trim() }.filter { it.isNotEmpty() }
+            // 番号のエラーが1つでもあれば番号の誤り。それ以外（文言が想定外のものを含む）は CAPTCHA の不一致として
+            // 扱い、有効な券を「無効」と記録しないようにする
+            val codeErrors = messages.filter { it.isCodeError() }
+            return if (codeErrors.isNotEmpty()) {
+                Outcome.InvalidCode(codeErrors.joinToString("\n"))
+            } else {
+                Outcome.CaptchaMismatch(messages.joinToString("\n").ifBlank { null })
             }
         }
 
@@ -140,6 +143,10 @@ object ResultParser {
                 .atZone(TOKYO).toInstant().toEpochMilli()
         }.getOrNull()
     }
+
+    /** ご優待番号についてのエラー文言か（画像の番号についての文言は除く）。実際の文言は未確認。 */
+    private fun String.isCodeError(): Boolean =
+        contains("優待") && !contains("画像") && !contains("認証")
 
     private fun Document.normalizedText(): String = body()?.text().orEmpty().toHalfWidth()
 

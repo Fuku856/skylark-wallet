@@ -1,6 +1,7 @@
 package com.example.skylarkwallet.di
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Room
 import com.example.skylarkwallet.BuildConfig
 import com.example.skylarkwallet.data.local.crypto.AeadStringCipher
@@ -31,6 +32,8 @@ import javax.inject.Singleton
 object AppModule {
 
     private const val BASE_URL = "https://www.skylarkyutaiken.com/"
+    private const val HTTP_LOG_TAG = "OkHttp"
+    private val LONG_DIGITS = Regex("\\d{9,}")
     private const val USER_AGENT =
         "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36"
 
@@ -49,10 +52,11 @@ object AppModule {
             )
         }
         .apply {
-            // デバッグビルドのみ。本文（9桁・13桁・HTML）は出さず、Cookie も伏せる
+            // デバッグビルドのみ。本文（9桁・13桁・HTML）は出さず、Cookie も伏せる。
+            // バーコード画像の URL（/input/barcode?13桁）にも番号が入るため、URL 中の長い数字列も伏せる
             if (BuildConfig.DEBUG) {
                 addInterceptor(
-                    HttpLoggingInterceptor().apply {
+                    HttpLoggingInterceptor { message -> Log.d(HTTP_LOG_TAG, message.replace(LONG_DIGITS, "***")) }.apply {
                         level = HttpLoggingInterceptor.Level.BASIC
                         redactHeader("Cookie")
                         redactHeader("Set-Cookie")

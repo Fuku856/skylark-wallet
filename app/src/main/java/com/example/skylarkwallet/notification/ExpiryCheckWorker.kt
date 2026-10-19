@@ -34,8 +34,9 @@ class ExpiryCheckWorker @AssistedInject constructor(
 
         for (voucher in vouchers) {
             val expiry = voucher.expiryAt ?: continue
-            if (voucher.balance == 0 || expiry < now) continue
-            val days = (expiry - now + Voucher.DAY_MILLIS - 1) / Voucher.DAY_MILLIS
+            // 使用済み（残高0円）と期限切れは通知しない
+            if (voucher.balance == 0) continue
+            val days = Voucher.daysUntil(expiry, now).takeIf { it >= 0 } ?: continue
             val threshold = ExpiryNotifier.NOTIFY_DAYS.filter { days <= it }.minOrNull() ?: continue
             val key = "${voucher.id}:$threshold"
             if (key in notified) continue

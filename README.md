@@ -65,7 +65,7 @@ app/src/main/java/com/example/skylarkwallet/
 
 GitHub でリリースを手動で公開すると、`.github/workflows/release.yml` が次の処理を行います。
 
-1. **APK のビルドと添付**: 「Set as a pre-release」にチェックしたリリース（ベータ）は `dev` の最新、正式版は `main` の最新から署名付き APK をビルドし、`skylark-wallet_<タグ>.apk` としてリリースに添付します。versionName はタグから先頭の `v` を除いた値（例 `v1.0.0-beta1` → `1.0.0-beta1`）、versionCode はワークフローの実行番号です。
+1. **APK のビルドと添付**: リリースのタグが指すコミットから署名付き APK をビルドし、`skylark-wallet_<タグ>.apk` としてリリースに添付します。versionName はタグから先頭の `v` を除いた値（例 `v1.0.0-beta1` → `1.0.0-beta1`）、versionCode はワークフローの実行番号です。タグは、「Set as a pre-release」にチェックしたリリース（ベータ）なら `dev`、正式版なら `main` に入っているコミットに打ってください（リリース作成画面の Target をそのブランチにする）。違うブランチのコミットだとビルドを中止します。
 2. **リリースノートの自動生成**: 前回のリリース（ベータは直前のリリース、正式版は直前の正式版）からの PR 一覧で What's Changed と Full Changelog を作ります。さらに Claude が利用者向けの要約（新機能／改善・修正）を作り、本文の先頭に付けます。
 
 ### 必要な Secret（Settings → Secrets and variables → Actions）

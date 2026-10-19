@@ -112,11 +112,24 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # プレリリース（ベータ）は dev の最新、正式版は main の最新をビルドする
+      # リリースのタグが指すコミットをビルドする（ブランチの最新を使うと、タグ付け後にマージされた変更が混ざるため）
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.prerelease && 'dev' || 'main' }}
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      # プレリリース（ベータ）は dev、正式版は main に入っているコミットにだけタグを打つ運用なので、
+      # 違うブランチのコミットにタグを打っていたら中止する
+      - name: Verify tag is on release branch
+        env:
+          BRANCH: ${{ github.event.release.prerelease && 'dev' || 'main' }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          if ! git merge-base --is-ancestor HEAD "origin/$BRANCH"; then
+            echo "::error::タグ $TAG_NAME のコミットが $BRANCH ブランチに含まれていません。$BRANCH 上のコミットにタグを打ち直してください。"
+            exit 1
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

@@ -74,6 +74,15 @@ class VoucherRepositoryImpl @Inject constructor(
 
     override suspend fun delete(id: String) = dao.delete(id)
 
+    override fun observeUnreadableCount(): Flow<Int> =
+        dao.observeAll().map { list -> list.count { !it.isReadable() } }.flowOn(Dispatchers.Default)
+
+    override suspend fun deleteUnreadable() = withContext(Dispatchers.Default) {
+        dao.getAll().filterNot { it.isReadable() }.forEach { dao.delete(it.id) }
+    }
+
+    private fun VoucherEntity.isReadable(): Boolean = decryptOrNull(encryptedCode9, id) != null
+
     private fun VoucherEntity.toDomain(): Voucher? {
         val code9 = decryptOrNull(encryptedCode9, id) ?: return null
         return Voucher(

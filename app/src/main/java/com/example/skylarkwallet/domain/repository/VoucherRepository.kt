@@ -17,4 +17,10 @@ interface VoucherRepository {
     suspend fun updateMemo(id: String, memo: String)
     suspend fun getResultHtml(id: String): String?
     suspend fun delete(id: String)
+
+    /** 復号できない（端末の暗号鍵が無効になったなど）ため一覧に出せない券の数。 */
+    fun observeUnreadableCount(): Flow<Int>
+
+    /** 復号できない券をすべて削除する。 */
+    suspend fun deleteUnreadable()
 }

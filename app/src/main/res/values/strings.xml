@@ -37,6 +37,10 @@
     <string name="action_delete">削除</string>
     <string name="delete_title">優待券を削除</string>
     <string name="delete_message">「%1$s」（末尾 %2$s）を削除します。保存したバーコードも消えます。</string>
+    <string name="unreadable_message">%1$d 枚の優待券を読み込めませんでした。端末の暗号鍵が無効になったため、保存した番号を復元できません。削除してから、お手元の番号で登録し直してください。</string>
+    <string name="unreadable_delete_action">読み込めない券を削除</string>
+    <string name="unreadable_delete_title">読み込めない券を削除</string>
+    <string name="unreadable_delete_message">読み込めない %1$d 枚の優待券を削除します。</string>
 
     <!-- コード登録 -->
     <string name="add_title">ご優待番号を登録</string>

@@ -62,6 +62,23 @@ class ResultParserTest {
     }
 
     @Test
+    fun `code error wins when shown together with captcha error`() {
+        val html = Fixtures.read("error_code.html").replace(
+            "<p class=\"err\">ご優待番号が正しくありません。</p>",
+            "<p class=\"err\">ご優待番号が正しくありません。</p><p class=\"err\">画像の番号が正しくありません。</p>",
+        )
+
+        assertEquals(ResultParser.Outcome.InvalidCode("ご優待番号が正しくありません。"), ResultParser.parse(html))
+    }
+
+    @Test
+    fun `unrecognized error message is captcha mismatch`() {
+        val html = Fixtures.read("error_code.html").replace("ご優待番号が正しくありません。", "入力された番号が違います。")
+
+        assertEquals(ResultParser.Outcome.CaptchaMismatch("入力された番号が違います。"), ResultParser.parse(html))
+    }
+
+    @Test
     fun `detects maintenance page`() {
         assertEquals(ResultParser.Outcome.Maintenance, ResultParser.parse(Fixtures.read("maintenance.html")))
     }

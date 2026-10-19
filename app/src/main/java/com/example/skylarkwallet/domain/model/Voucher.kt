@@ -26,10 +26,7 @@ data class Voucher(
     fun isExpired(now: Long): Boolean = expiryAt != null && expiryAt < now
 
     /** 有効期限までの残り日数（切り上げ）。期限不明なら null。 */
-    fun daysUntilExpiry(now: Long): Long? = expiryAt?.let {
-        val diff = it - now
-        if (diff < 0) -1 else (diff + DAY_MILLIS - 1) / DAY_MILLIS
-    }
+    fun daysUntilExpiry(now: Long): Long? = expiryAt?.let { daysUntil(it, now) }
 
     fun isExpiringSoon(now: Long): Boolean {
         val days = daysUntilExpiry(now) ?: return false
@@ -53,6 +50,12 @@ data class Voucher(
         val DAY_MILLIS = TimeUnit.DAYS.toMillis(1)
         const val EXPIRING_SOON_DAYS = 30L
         const val STALE_DAYS = 7L
+
+        /** [expiryAt] までの残り日数（切り上げ）。期限切れなら -1。復号せずに使えるよう期限だけを受け取る。 */
+        fun daysUntil(expiryAt: Long, now: Long): Long {
+            val diff = expiryAt - now
+            return if (diff < 0) -1 else (diff + DAY_MILLIS - 1) / DAY_MILLIS
+        }
 
         /** 期限の近い順（期限不明は最後、同じなら登録順）。 */
         val ExpiryOrder: Comparator<Voucher> =
