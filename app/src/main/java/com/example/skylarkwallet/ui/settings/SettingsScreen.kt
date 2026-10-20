@@ -133,6 +133,7 @@ fun SettingsScreen(
                         }
                     },
                 )
+                BackupItems()
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_terms)) },
@@ -146,7 +147,6 @@ fun SettingsScreen(
                     headlineContent = { Text(stringResource(R.string.settings_privacy)) },
                     supportingContent = { Text(stringResource(R.string.settings_privacy_summary)) },
                 )
-                BackupItems()
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_github)) },
                     supportingContent = { Text(REPOSITORY_URL) },
