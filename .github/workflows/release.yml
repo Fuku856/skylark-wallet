@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write # リリース本文の更新とアセットのアップロードに必要
+  pull-requests: read # 要約に渡す PR 本文の取得（gh pr view）に必要
 
 jobs:
   # PR 一覧から変更履歴（What's Changed）を自動生成し、本文を常に上書きする。
@@ -52,13 +53,14 @@ jobs:
           summary=""
           if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
             # PR タイトルだけでは「〜など」とまとめた PR の中身が分からないため、各 PR の本文も渡す。
-            # 取得に失敗した PR は飛ばす（タイトルは notes に残っている）。
+            # 取得に失敗した PR は飛ばす（タイトルは notes に残っている）が、要約が薄くなるので警告を出す。
             pr_details=""
             for pr in $(printf '%s' "$notes" | { grep -oE '/pull/[0-9]+' || true; } | cut -d/ -f3 | sort -un); do
-              detail=$(gh pr view "$pr" --repo "$REPO" --json number,title,body \
-                --jq '"#### #\(.number) \(.title)\n\n\(.body // "" | .[0:6000])"' || true)
-              if [ -n "$detail" ]; then
+              if detail=$(gh pr view "$pr" --repo "$REPO" --json number,title,body \
+                --jq '"#### #\(.number) \(.title)\n\n\(.body // "" | .[0:6000])"'); then
                 pr_details+="$detail"$'\n\n'
+              else
+                echo "::warning::PR #$pr の本文を取得できませんでした。この PR はタイトルだけで要約します。"
               fi
             done
 
