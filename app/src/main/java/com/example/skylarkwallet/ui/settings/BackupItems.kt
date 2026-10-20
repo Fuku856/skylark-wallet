@@ -52,15 +52,13 @@ import java.time.format.DateTimeFormatter
 
 /** 設定画面の「バックアップを作成」「バックアップから復元」と、その流れで出すダイアログ。 */
 @Composable
-fun BackupItems(
-    biometricLock: Boolean,
-    viewModel: BackupViewModel = hiltViewModel(),
-) {
+fun BackupItems(viewModel: BackupViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val resources = LocalResources.current
     val activity = LocalActivity.current as? FragmentActivity
     var showExportNotice by rememberSaveable { mutableStateOf(false) }
+    var showAuthUnavailable by rememberSaveable { mutableStateOf(false) }
     // パスワードを間違えたときに打ち直さなくて済むよう、照合中も入力を残す（保存状態には残さない）
     var passwordInput by remember { mutableStateOf("") }
     LaunchedEffect(state) {
@@ -78,8 +76,9 @@ fun BackupItems(
         headlineContent = { Text(stringResource(R.string.backup_export)) },
         supportingContent = { Text(stringResource(R.string.backup_export_summary)) },
         modifier = Modifier.clickable {
-            // ロックを解除したまま端末を渡された場合に、券を持ち出されないよう本人確認する
-            if (biometricLock && activity != null && BiometricAuth.canAuthenticate(context)) {
+            // 券をまとめて持ち出せる操作なので、アプリのロック設定に関わらず毎回本人確認する。
+            // 画面ロックが無い端末では確認できないため、作成させない
+            if (activity != null && BiometricAuth.canAuthenticate(context)) {
                 BiometricAuth.authenticate(
                     activity = activity,
                     title = resources.getString(R.string.backup_auth_title),
@@ -87,7 +86,7 @@ fun BackupItems(
                     onSuccess = { showExportNotice = true },
                 )
             } else {
-                showExportNotice = true
+                showAuthUnavailable = true
             }
         },
     )
@@ -110,6 +109,14 @@ fun BackupItems(
                 }) { Text(stringResource(R.string.backup_choose_location)) }
             },
             dismissButton = { TextButton(onClick = { showExportNotice = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
+    if (showAuthUnavailable) {
+        MessageDialog(
+            title = stringResource(R.string.backup_export),
+            message = stringResource(R.string.backup_auth_unavailable),
+            onDismiss = { showAuthUnavailable = false },
         )
     }
 

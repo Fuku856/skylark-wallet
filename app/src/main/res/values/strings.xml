@@ -124,6 +124,7 @@
     <string name="backup_export_summary">機種変更のために、優待券を暗号化したファイルに保存します</string>
     <string name="backup_auth_title">バックアップを作成</string>
     <string name="backup_auth_subtitle">本人確認のため認証してください</string>
+    <string name="backup_auth_unavailable">バックアップを作成するには本人確認が必要です。端末の設定で画面ロック（PIN・パターン・パスワード）または生体認証を設定してから、もう一度お試しください。</string>
     <string name="backup_export_notice">優待券（ご優待番号・バーコード番号・残高・照会結果・メモ）を、1つのファイルに暗号化して保存します。
 
 保存が終わると、ファイルを開くためのパスワードを1度だけ表示します。新しい端末で「バックアップから復元」を選び、ファイルとパスワードで読み込んでください。
