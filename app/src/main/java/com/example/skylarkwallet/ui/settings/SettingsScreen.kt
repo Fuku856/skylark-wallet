@@ -133,6 +133,7 @@ fun SettingsScreen(
                         }
                     },
                 )
+                BackupItems()
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_terms)) },

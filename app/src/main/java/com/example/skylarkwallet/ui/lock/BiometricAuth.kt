@@ -11,7 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 const val LOCK_AUTHENTICATORS =
     BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
 
-/** アプリのロック解除・ロック有効化・ご優待番号の表示で使う認証ダイアログ。 */
+/** アプリのロック解除・ロック有効化・ご優待番号の表示・バックアップ作成で使う認証ダイアログ。 */
 object BiometricAuth {
 
     /** 認証の手段が無くなったことを示すエラー（キャンセルや試行回数超過は含まない）。 */

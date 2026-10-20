@@ -4,8 +4,12 @@ import android.util.Log
 import com.example.skylarkwallet.data.local.crypto.StringCipher
 import com.example.skylarkwallet.data.local.db.VoucherDao
 import com.example.skylarkwallet.data.local.db.VoucherEntity
+import com.example.skylarkwallet.domain.model.CodeNormalizer
+import com.example.skylarkwallet.domain.model.Ean13
+import com.example.skylarkwallet.domain.model.ImportSummary
 import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.domain.model.Voucher
+import com.example.skylarkwallet.domain.model.VoucherBackup
 import com.example.skylarkwallet.domain.model.VoucherResult
 import com.example.skylarkwallet.domain.repository.VoucherRepository
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +85,59 @@ class VoucherRepositoryImpl @Inject constructor(
     override suspend fun deleteUnreadable() = withContext(Dispatchers.Default) {
         dao.getAll().filterNot { it.isReadable() }.forEach { dao.delete(it.id) }
     }
+
+    override suspend fun exportBackup(): List<VoucherBackup> = withContext(Dispatchers.Default) {
+        dao.getAll().mapNotNull { entity ->
+            val code9 = decryptOrNull(entity.encryptedCode9, entity.id) ?: return@mapNotNull null
+            VoucherBackup(
+                code9 = code9,
+                barcode13 = entity.encryptedBarcode13?.let { decryptOrNull(it, entity.id) },
+                resultHtml = entity.encryptedResultHtml?.let { decryptOrNull(it, entity.id) },
+                balance = entity.balance,
+                expiryAt = entity.expiryAt,
+                balanceCheckedAt = entity.balanceCheckedAt,
+                lastUpdatedAt = entity.lastUpdatedAt,
+                memo = entity.memo,
+                createdAt = entity.createdAt,
+            )
+        }
+    }
+
+    override suspend fun importBackup(entries: List<VoucherBackup>): ImportSummary = withContext(Dispatchers.Default) {
+        val known = getVouchers().mapTo(mutableSetOf()) { it.code9 }
+        var duplicate = 0
+        var invalid = 0
+        val added = entries.mapNotNull { entry ->
+            when {
+                !CodeNormalizer.isValid(entry.code9) -> {
+                    invalid++
+                    null
+                }
+                !known.add(entry.code9) -> {
+                    duplicate++
+                    null
+                }
+                else -> entry.toEntity(UUID.randomUUID().toString())
+            }
+        }
+        // 1トランザクションで入れる（途中で失敗しても一部だけ入った状態にしない）
+        dao.insertAll(added)
+        ImportSummary(added = added.size, skippedDuplicate = duplicate, skippedInvalid = invalid)
+    }
+
+    /** 移行先の ID で暗号化し直す（associated data が ID なので、元の暗号文は使えない）。 */
+    private fun VoucherBackup.toEntity(id: String) = VoucherEntity(
+        id = id,
+        encryptedCode9 = cipher.encrypt(code9, id),
+        encryptedBarcode13 = barcode13?.takeIf(Ean13::isValid)?.let { cipher.encrypt(it, id) },
+        encryptedResultHtml = resultHtml?.let { cipher.encrypt(it, id) },
+        balance = balance,
+        expiryAt = expiryAt,
+        balanceCheckedAt = balanceCheckedAt,
+        lastUpdatedAt = lastUpdatedAt,
+        memo = MemoNormalizer.normalize(memo),
+        createdAt = createdAt,
+    )
 
     private fun VoucherEntity.isReadable(): Boolean = decryptOrNull(encryptedCode9, id) != null
 
