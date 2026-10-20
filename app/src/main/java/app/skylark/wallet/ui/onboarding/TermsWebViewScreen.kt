@@ -32,6 +32,38 @@ import app.skylark.wallet.ui.common.openExternalUrl
 
 private const val SITE_HOST = "www.skylarkyutaiken.com"
 
+/**
+ * 入力フォームなどを除き、利用規約の見出しと本文だけをスマホ幅で表示する。
+ * 規約が見つからない（サイトの構造が変わった）ときは何もせず、ページ全体をそのまま表示する。
+ */
+private const val SHOW_TERMS_ONLY_SCRIPT = """
+(function () {
+  var anchor = document.querySelector('a[name="riyoukiyaku"]');
+  if (!anchor) return;
+  var heading = anchor.nextElementSibling;
+  var body = heading && heading.nextElementSibling;
+  if (!heading || !body) return;
+  var viewport = document.querySelector('meta[name="viewport"]');
+  if (!viewport) {
+    viewport = document.createElement('meta');
+    viewport.name = 'viewport';
+    document.head.appendChild(viewport);
+  }
+  viewport.content = 'width=device-width, initial-scale=1';
+  body.style.maxHeight = 'none';
+  body.style.overflow = 'visible';
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'padding:16px;font-size:15px;line-height:1.7;word-break:break-all;';
+  heading.style.cssText = 'font-size:18px;margin:0 0 12px;';
+  wrapper.appendChild(heading);
+  wrapper.appendChild(body);
+  document.body.innerHTML = '';
+  document.body.style.cssText = 'margin:0;min-width:0;width:auto;';
+  document.body.appendChild(wrapper);
+  window.scrollTo(0, 0);
+})();
+"""
+
 /** サイトの利用規約をアプリ内で表示する。サイト外へのリンクは外部ブラウザで開く。 */
 @Composable
 fun TermsWebViewScreen(onBack: () -> Unit) {
@@ -71,6 +103,13 @@ private fun TermsWebView(onLoadingChange: (Boolean) -> Unit, modifier: Modifier 
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                 // ページ内の折りたたみ表示などに JavaScript を使うため有効にする
                 applySafeSettings(javaScriptEnabled = true)
+                settings.apply {
+                    // サイトは PC 向けの固定幅レイアウトなので、画面幅に収めて表示する
+                    useWideViewPort = true
+                    loadWithOverviewMode = true
+                    builtInZoomControls = true
+                    displayZoomControls = false
+                }
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         val url = request.url
@@ -81,7 +120,10 @@ private fun TermsWebView(onLoadingChange: (Boolean) -> Unit, modifier: Modifier 
 
                     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) = onLoadingChange(true)
 
-                    override fun onPageFinished(view: WebView, url: String?) = onLoadingChange(false)
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        view.evaluateJavascript(SHOW_TERMS_ONLY_SCRIPT, null)
+                        onLoadingChange(false)
+                    }
                 }
                 loadUrl(TERMS_URL)
             }

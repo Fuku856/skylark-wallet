@@ -40,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.fragment.app.FragmentActivity
@@ -134,6 +136,9 @@ fun SettingsScreen(
                     },
                 )
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                CategoryHeader(stringResource(R.string.backup_category))
+                BackupItems()
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_terms)) },
                     supportingContent = {
@@ -186,6 +191,19 @@ private fun ThemeItem(selected: ThemeMode, onSelect: (ThemeMode) -> Unit) {
                 }
             }
         },
+    )
+}
+
+/** 設定項目をまとめるカテゴリの見出し。 */
+@Composable
+private fun CategoryHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics { heading() },
     )
 }
 

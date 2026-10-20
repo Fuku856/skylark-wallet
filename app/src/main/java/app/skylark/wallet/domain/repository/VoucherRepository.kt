@@ -1,6 +1,8 @@
 package app.skylark.wallet.domain.repository
 
+import app.skylark.wallet.domain.model.ImportSummary
 import app.skylark.wallet.domain.model.Voucher
+import app.skylark.wallet.domain.model.VoucherBackup
 import app.skylark.wallet.domain.model.VoucherResult
 import kotlinx.coroutines.flow.Flow
 
@@ -23,4 +25,10 @@ interface VoucherRepository {
 
     /** 復号できない券をすべて削除する。 */
     suspend fun deleteUnreadable()
+
+    /** 端末移行用に、復号できる券をすべて復号して返す（復号できない券は含めない）。 */
+    suspend fun exportBackup(): List<VoucherBackup>
+
+    /** バックアップの券を追加する。同じ9桁が登録済みの券と形式が正しくない券は飛ばす。 */
+    suspend fun importBackup(entries: List<VoucherBackup>): ImportSummary
 }

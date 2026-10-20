@@ -21,6 +21,9 @@ interface VoucherDao {
     @Insert
     suspend fun insert(entity: VoucherEntity)
 
+    @Insert
+    suspend fun insertAll(entities: List<VoucherEntity>)
+
     @Update
     suspend fun update(entity: VoucherEntity)
 

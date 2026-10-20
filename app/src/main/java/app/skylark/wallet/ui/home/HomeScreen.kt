@@ -1,5 +1,6 @@
 package app.skylark.wallet.ui.home
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -49,19 +50,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import app.skylark.wallet.R
 import app.skylark.wallet.domain.model.MemoNormalizer
+import app.skylark.wallet.domain.model.Voucher
 import app.skylark.wallet.ui.common.Format
+import app.skylark.wallet.ui.lock.BiometricAuth
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
@@ -77,6 +91,29 @@ fun HomeScreen(
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingUnreadable by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    // MainActivity は FragmentActivity なので必ずキャストできる
+    val activity = LocalActivity.current as FragmentActivity
+    val scope = rememberCoroutineScope()
+    val reveal: CodeRevealViewModel = viewModel(viewModelStoreOwner = activity)
+    // アプリを離れたら閉じる（見るたびに認証する）
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { reveal.voucherId = null }
+    val revealCode: (String) -> Unit = { id ->
+        if (!BiometricAuth.canAuthenticate(context)) {
+            scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.code_auth_unavailable)) }
+        } else {
+            BiometricAuth.authenticate(
+                activity = activity,
+                title = resources.getString(R.string.action_show_code),
+                subtitle = resources.getString(R.string.code_prompt_subtitle),
+                onSuccess = { reveal.voucherId = id },
+                onError = { code, message ->
+                    if (code !in BiometricAuth.CANCEL_ERRORS) scope.launch { snackbarHostState.showSnackbar(message.toString()) }
+                },
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -108,6 +145,7 @@ fun HomeScreen(
                     onEditMemo = { editing = it },
                     onDelete = { deleting = it },
                     onDeleteUnreadable = { deletingUnreadable = true },
+                    onRevealCode = revealCode,
                 )
             }
 
@@ -170,6 +208,11 @@ fun HomeScreen(
             )
         }
     }
+    reveal.voucherId?.let { id ->
+        all.firstOrNull { it.id == id }?.let { voucher ->
+            CodeDialog(voucher, onDismiss = { reveal.voucherId = null })
+        }
+    }
     if (deletingUnreadable) {
         AlertDialog(
             onDismissRequest = { deletingUnreadable = false },
@@ -218,6 +261,7 @@ private fun VoucherList(
     onEditMemo: (String) -> Unit,
     onDelete: (String) -> Unit,
     onDeleteUnreadable: () -> Unit,
+    onRevealCode: (String) -> Unit,
 ) {
     var usedExpanded by rememberSaveable { mutableStateOf(false) }
     val motion = MaterialTheme.motionScheme
@@ -255,6 +299,7 @@ private fun VoucherList(
                 onShowBarcode = { onOpenBarcode(voucher.id) },
                 onEditMemo = { onEditMemo(voucher.id) },
                 onDelete = { onDelete(voucher.id) },
+                onRevealCode = { onRevealCode(voucher.id) },
                 modifier = Modifier.animateItem(),
             )
         }
@@ -294,6 +339,7 @@ private fun VoucherList(
                                 onShowBarcode = { onOpenBarcode(voucher.id) },
                                 onEditMemo = { onEditMemo(voucher.id) },
                                 onDelete = { onDelete(voucher.id) },
+                                onRevealCode = { onRevealCode(voucher.id) },
                             )
                         }
                     }
@@ -313,14 +359,10 @@ private fun HeroHeader(total: Int, lastUpdatedAt: Long?) {
     ) {
         Column(Modifier.padding(24.dp)) {
             Text(stringResource(R.string.hero_label), style = MaterialTheme.typography.titleMedium)
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 RollingYen(total, MaterialTheme.typography.displayLarge)
                 Spacer(Modifier.width(4.dp))
-                Text(
-                    stringResource(R.string.yen_unit),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
+                Text(stringResource(R.string.yen_unit), style = MaterialTheme.typography.headlineMedium)
             }
             Text(
                 text = lastUpdatedAt?.let { stringResource(R.string.hero_updated, Format.dateTime(it)) }
@@ -384,5 +426,27 @@ private fun MemoDialog(initial: String, onDismiss: () -> Unit, onSave: (String) 
         },
         confirmButton = { TextButton(onClick = { onSave(memo) }) { Text(stringResource(R.string.save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+/** 9桁のご優待番号を表示する。ダイアログは別ウィンドウなので、ここで FLAG_SECURE を付けて映り込みを防ぐ。 */
+@Composable
+private fun CodeDialog(voucher: Voucher, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(securePolicy = SecureFlagPolicy.SecureOn),
+        title = { Text(stringResource(R.string.code_title)) },
+        text = {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(voucher.memo.ifBlank { stringResource(R.string.voucher_default_name) })
+                Text(
+                    Format.code(voucher.code9),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
     )
 }

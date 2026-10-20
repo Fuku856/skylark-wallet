@@ -1,7 +1,7 @@
 package app.skylark.wallet.ui
 
-import androidx.activity.BackEventCompat
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -27,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigationevent.NavigationEvent
 import app.skylark.wallet.R
 import app.skylark.wallet.domain.model.AppSettings
 import app.skylark.wallet.ui.barcode.BarcodeScreen
@@ -43,7 +44,10 @@ import app.skylark.wallet.ui.webview.OfficialViewModel
 import app.skylark.wallet.ui.webview.OfficialWebViewScreen
 import kotlinx.coroutines.launch
 
-private const val PREDICTIVE_BACK_MILLIS = 300
+private const val PREDICTIVE_BACK_MILLIS = 200
+
+/** 予測型戻るのプレビューに使う減速カーブ（Android のデザインガイドで SystemUI に合わせるとされる値）。 */
+private val PredictiveBackEasing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
 
 private object Routes {
     const val TERMS = "terms"
@@ -107,13 +111,14 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     val motion = MaterialTheme.motionScheme
     val slideSpec = motion.defaultSpatialSpec<IntOffset>()
     val fadeSpec = motion.defaultEffectsSpec<Float>()
-    // 予測型戻るではジェスチャーの進み具合がそのまま再生位置になるため、ばねではなく一定速度で動かす
-    val predictiveScaleSpec = tween<Float>(PREDICTIVE_BACK_MILLIS, easing = LinearEasing)
-    val predictiveOffsetSpec = tween<IntOffset>(PREDICTIVE_BACK_MILLIS, easing = LinearEasing)
-    // ジェスチャーの途中では透けないよう、終わり際だけで消す
+    // 予測型戻るではジェスチャーの進み具合がそのまま再生位置になり、指を離すと残りを一定速度で再生する。
+    // 動き始めから縮んで見えるよう減速カーブを通し、離した後の残りがすぐ終わるよう全体を短くする
+    val predictiveScaleSpec = tween<Float>(PREDICTIVE_BACK_MILLIS, easing = PredictiveBackEasing)
+    val predictiveOffsetSpec = tween<IntOffset>(PREDICTIVE_BACK_MILLIS, easing = PredictiveBackEasing)
+    // ジェスチャーの途中では透けないよう、終わり際（指を離した後）だけで消す
     val predictiveFadeSpec = tween<Float>(
-        durationMillis = PREDICTIVE_BACK_MILLIS / 3,
-        delayMillis = PREDICTIVE_BACK_MILLIS * 2 / 3,
+        durationMillis = PREDICTIVE_BACK_MILLIS * 3 / 10,
+        delayMillis = PREDICTIVE_BACK_MILLIS * 7 / 10,
         easing = LinearEasing,
     )
 
@@ -130,7 +135,7 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
         // 戻るジェスチャー中は、戻り先の画面を後ろに出したまま今の画面を縮め、指の動く向きへ少し寄せる
         predictivePopEnterTransition = { EnterTransition.None },
         predictivePopExitTransition = { swipeEdge ->
-            val direction = if (swipeEdge == BackEventCompat.EDGE_RIGHT) -1 else 1
+            val direction = if (swipeEdge == NavigationEvent.EDGE_RIGHT) -1 else 1
             scaleOut(predictiveScaleSpec, targetScale = 0.9f) +
                 slideOutHorizontally(predictiveOffsetSpec) { direction * it / 8 } +
                 fadeOut(predictiveFadeSpec)
