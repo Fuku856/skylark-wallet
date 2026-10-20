@@ -146,6 +146,7 @@ fun SettingsScreen(
                     headlineContent = { Text(stringResource(R.string.settings_privacy)) },
                     supportingContent = { Text(stringResource(R.string.settings_privacy_summary)) },
                 )
+                BackupItems(biometricLock = s.biometricLock)
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.settings_github)) },
                     supportingContent = { Text(REPOSITORY_URL) },

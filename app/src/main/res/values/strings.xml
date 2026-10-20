@@ -7,6 +7,7 @@
     <string name="save">保存</string>
     <string name="back">戻る</string>
     <string name="retry">再試行</string>
+    <string name="close">閉じる</string>
     <string name="yen_unit">円</string>
     <string name="yen_format">%1$,d円</string>
     <string name="yen_format_text">%1$s円</string>
@@ -111,12 +112,45 @@
     <string name="settings_terms_agreed">同意済み</string>
     <string name="settings_terms_not_agreed">未同意（照会できません）</string>
     <string name="settings_privacy">データの保存</string>
-    <string name="settings_privacy_summary">ご優待番号・バーコード番号・照会結果は Android Keystore で保護した鍵（AES-256-GCM）で暗号化して保存します。バックアップの対象外です。</string>
+    <string name="settings_privacy_summary">ご優待番号・バーコード番号・照会結果は Android Keystore で保護した鍵（AES-256-GCM）で暗号化して保存します。データは端末の外に出ません。機種変更のときは「バックアップを作成」で新しい端末に移せます。</string>
     <string name="settings_theme">テーマ</string>
     <string name="settings_theme_system">システム既定</string>
     <string name="settings_theme_light">ライト</string>
     <string name="settings_theme_dark">ダーク</string>
     <string name="settings_github">GitHub</string>
+
+    <!-- バックアップ（端末移行） -->
+    <string name="backup_export">バックアップを作成</string>
+    <string name="backup_export_summary">機種変更のために、優待券を暗号化したファイルに保存します</string>
+    <string name="backup_auth_title">バックアップを作成</string>
+    <string name="backup_auth_subtitle">本人確認のため認証してください</string>
+    <string name="backup_export_notice">優待券（ご優待番号・バーコード番号・残高・照会結果・メモ）を、1つのファイルに暗号化して保存します。
+
+保存が終わると、ファイルを開くためのパスワードを1度だけ表示します。新しい端末で「バックアップから復元」を選び、ファイルとパスワードで読み込んでください。
+
+ファイルとパスワードの両方が他人に渡ると、優待券を使われるおそれがあります。</string>
+    <string name="backup_choose_location">保存先を選ぶ</string>
+    <string name="backup_working">処理しています…</string>
+    <string name="backup_password_title">パスワードを控えてください</string>
+    <string name="backup_password_message">%1$d 枚の優待券を保存しました。復元するときに次のパスワードが必要です。</string>
+    <string name="backup_password_warning">パスワードはこの画面でしか表示できません。紙に書き留め、ファイルとは別に保管してください（スクリーンショットは撮れません）。移行が終わったら、ファイルとメモは削除・処分してください。</string>
+    <string name="backup_password_noted">パスワードを書き留めました</string>
+    <string name="backup_import">バックアップから復元</string>
+    <string name="backup_import_summary">「バックアップを作成」で保存したファイルから優待券を読み込みます</string>
+    <string name="backup_password_input_message">バックアップを作成したときに表示されたパスワードを入力してください。ハイフンや空白、大文字・小文字は区別しません。</string>
+    <string name="backup_password_label">パスワード</string>
+    <string name="backup_restore">復元</string>
+    <string name="backup_import_done_title">復元しました</string>
+    <string name="backup_import_added">%1$d 枚の優待券を追加しました。</string>
+    <string name="backup_import_skipped_duplicate">登録済みの %1$d 枚は飛ばしました。</string>
+    <string name="backup_import_skipped_invalid">ご優待番号が正しくない %1$d 枚は飛ばしました。</string>
+    <string name="backup_import_delete_file">移行が終わったら、バックアップファイルとパスワードのメモは削除・処分してください。</string>
+    <string name="backup_error_title">バックアップを処理できませんでした</string>
+    <string name="backup_error_wrong_password">パスワードが違うか、ファイルが壊れています</string>
+    <string name="backup_error_corrupted">ファイルが壊れています。</string>
+    <string name="backup_error_not_backup">このアプリのバックアップファイルではありません。</string>
+    <string name="backup_error_version">新しいバージョンのアプリで作成されたファイルです。アプリを更新してから読み込んでください。</string>
+    <string name="backup_error_io">ファイルを読み書きできませんでした。保存先を変えてお試しください。</string>
     <string name="settings_version_format">v%1$s</string>
     <string name="settings_copyright" translatable="false">Copyright (c) 2026 Fuku856</string>
 
