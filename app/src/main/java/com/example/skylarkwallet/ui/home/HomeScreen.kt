@@ -359,14 +359,10 @@ private fun HeroHeader(total: Int, lastUpdatedAt: Long?) {
     ) {
         Column(Modifier.padding(24.dp)) {
             Text(stringResource(R.string.hero_label), style = MaterialTheme.typography.titleMedium)
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 RollingYen(total, MaterialTheme.typography.displayLarge)
                 Spacer(Modifier.width(4.dp))
-                Text(
-                    stringResource(R.string.yen_unit),
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
+                Text(stringResource(R.string.yen_unit), style = MaterialTheme.typography.headlineMedium)
             }
             Text(
                 text = lastUpdatedAt?.let { stringResource(R.string.hero_updated, Format.dateTime(it)) }
