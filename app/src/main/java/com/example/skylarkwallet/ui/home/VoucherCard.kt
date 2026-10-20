@@ -117,7 +117,7 @@ fun VoucherCard(
                 // 残高と、その残高をいつ確認したかをまとめて右側に置く
                 Column(horizontalAlignment = Alignment.End) {
                     if (voucher.balance != null) {
-                        Row {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             val style = MaterialTheme.typography.headlineMedium
                             RollingYen(if (revealed) voucher.balance else 0, style)
                             Text(stringResource(R.string.yen_unit), style = style)
