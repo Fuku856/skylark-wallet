@@ -27,9 +27,4 @@ class CodeNormalizerTest {
     fun `splits into three parts`() {
         assertEquals(listOf("ABC", "123", "XYZ"), CodeNormalizer.split("ABC123XYZ"))
     }
-
-    @Test
-    fun `formats in groups of three with hyphens`() {
-        assertEquals("ABC-123-XYZ", CodeNormalizer.format("ABC123XYZ"))
-    }
 }

@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,6 +98,7 @@ fun VoucherCard(
                         )
                         AnimatedVisibility(
                             visible = detailsVisible,
+                            modifier = Modifier.overflowVertically(),
                             enter = expandHorizontally(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
                             exit = shrinkHorizontally(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
                         ) {
@@ -232,6 +234,15 @@ private fun Pill(text: String, container: Color, content: Color) {
 private val DesaturatePaint = Paint().apply {
     colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.15f) })
     alpha = 0.8f
+}
+
+/**
+ * 縦方向の大きさを行の高さに含めず、行の中央に重ねて置く。小さな文字の横にアイコンボタン（タッチ領域 48dp）を
+ * 置いても行が高くならず、出し入れでカードの中身がずれない。タップははみ出した部分でも受け取れる。
+ */
+private fun Modifier.overflowVertically(): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints.copy(minHeight = 0))
+    layout(placeable.width, 0) { placeable.place(0, -placeable.height / 2) }
 }
 
 /** 使用済みの券の彩度を落とす。 */

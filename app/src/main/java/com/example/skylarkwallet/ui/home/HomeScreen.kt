@@ -50,7 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -70,8 +69,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.skylarkwallet.R
-import com.example.skylarkwallet.domain.model.CodeNormalizer
 import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.domain.model.Voucher
 import com.example.skylarkwallet.ui.common.Format
@@ -92,23 +91,26 @@ fun HomeScreen(
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingUnreadable by rememberSaveable { mutableStateOf(false) }
-    // 番号は画面回転やプロセスの再生成で復元せず、アプリを離れたら閉じる（見るたびに認証する）
-    var revealing by remember { mutableStateOf<String?>(null) }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { revealing = null }
-
     val context = LocalContext.current
     val resources = LocalResources.current
-    val activity = LocalActivity.current as? FragmentActivity
+    // MainActivity は FragmentActivity なので必ずキャストできる
+    val activity = LocalActivity.current as FragmentActivity
     val scope = rememberCoroutineScope()
+    val reveal: CodeRevealViewModel = viewModel(viewModelStoreOwner = activity)
+    // アプリを離れたら閉じる（見るたびに認証する）
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { reveal.voucherId = null }
     val revealCode: (String) -> Unit = { id ->
-        if (activity == null || !BiometricAuth.canAuthenticate(context)) {
+        if (!BiometricAuth.canAuthenticate(context)) {
             scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.code_auth_unavailable)) }
         } else {
             BiometricAuth.authenticate(
                 activity = activity,
-                title = resources.getString(R.string.code_prompt_title),
+                title = resources.getString(R.string.action_show_code),
                 subtitle = resources.getString(R.string.code_prompt_subtitle),
-                onSuccess = { revealing = id },
+                onSuccess = { reveal.voucherId = id },
+                onError = { code, message ->
+                    if (code !in BiometricAuth.CANCEL_ERRORS) scope.launch { snackbarHostState.showSnackbar(message.toString()) }
+                },
             )
         }
     }
@@ -206,9 +208,9 @@ fun HomeScreen(
             )
         }
     }
-    revealing?.let { id ->
+    reveal.voucherId?.let { id ->
         all.firstOrNull { it.id == id }?.let { voucher ->
-            CodeDialog(voucher, onDismiss = { revealing = null })
+            CodeDialog(voucher, onDismiss = { reveal.voucherId = null })
         }
     }
     if (deletingUnreadable) {
@@ -442,7 +444,7 @@ private fun CodeDialog(voucher: Voucher, onDismiss: () -> Unit) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(voucher.memo.ifBlank { stringResource(R.string.voucher_default_name) })
                 Text(
-                    CodeNormalizer.format(voucher.code9),
+                    Format.code(voucher.code9),
                     style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Monospace),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),

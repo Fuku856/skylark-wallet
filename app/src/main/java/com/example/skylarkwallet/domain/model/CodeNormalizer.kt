@@ -24,7 +24,4 @@ object CodeNormalizer {
         require(isValid(code)) { "invalid code" }
         return code.chunked(3)
     }
-
-    /** 表示用に3文字ずつハイフンで区切る（例: ABC-123-XYZ）。 */
-    fun format(code: String): String = code.chunked(3).joinToString("-")
 }

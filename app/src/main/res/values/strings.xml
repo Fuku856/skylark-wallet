@@ -131,7 +131,6 @@
     <string name="lock_prompt_subtitle">優待券を表示するには認証してください</string>
     <string name="lock_enable_prompt_title">起動時のロックを有効にする</string>
     <string name="lock_enable_prompt_subtitle">ロックを解除できることを確かめるため、認証してください</string>
-    <string name="code_prompt_title">ご優待番号を表示</string>
     <string name="code_prompt_subtitle">番号を表示するには認証してください</string>
 
     <!-- 通知 -->
