@@ -123,6 +123,7 @@
     <string name="settings_github">GitHub</string>
 
     <!-- バックアップ（端末移行） -->
+    <string name="backup_category">バックアップ</string>
     <string name="backup_export">バックアップを作成</string>
     <string name="backup_export_summary">機種変更のために、優待券を暗号化したファイルに保存します</string>
     <string name="backup_auth_title">バックアップを作成</string>
