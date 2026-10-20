@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
@@ -17,7 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +42,7 @@ import com.example.skylarkwallet.R
 import com.example.skylarkwallet.domain.model.CodeNormalizer
 import com.example.skylarkwallet.domain.model.MemoNormalizer
 import com.example.skylarkwallet.domain.usecase.RegisterVoucherUseCase
+import com.example.skylarkwallet.ui.common.KeyboardBottomSheet
 import kotlinx.coroutines.launch
 
 /**
@@ -64,14 +62,7 @@ fun AddCodeSheet(
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
     val ready = CodeNormalizer.isValid(code) && !busy
-
-    // シートの表示と同時にキーボードを出し、シートとキーボードが一緒に上がるようにする
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboard?.show()
-    }
 
     fun register() {
         if (!ready) return
@@ -86,13 +77,18 @@ fun AddCodeSheet(
         }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    KeyboardBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        // シートの表示と同時にキーボードを出し、シートとキーボードが一緒に上がるようにする。
+        // シートは別のウィンドウなので、キーボードの操作もシートの中で取ったものを使う
+        val keyboard = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .navigationBarsPadding()
-                .imePadding()
                 .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
