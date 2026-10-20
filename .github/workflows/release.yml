@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   # PR 一覧から変更履歴（What's Changed）を自動生成し、本文を常に上書きする。
-  # さらに PR 一覧を Claude に渡して、利用者向けの新機能・改善点の要約を先頭に付ける。
+  # さらに PR 一覧と各 PR の本文を Claude に渡して、利用者向けの新機能・改善点の要約を先頭に付ける。
   release-notes:
     runs-on: ubuntu-latest
     steps:
@@ -51,20 +51,32 @@ jobs:
           # トークンが無い・呼び出しに失敗した場合は要約を諦め、What's Changed だけで続行する。
           summary=""
           if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
+            # PR タイトルだけでは「〜など」とまとめた PR の中身が分からないため、各 PR の本文も渡す。
+            # 取得に失敗した PR は飛ばす（タイトルは notes に残っている）。
+            pr_details=""
+            for pr in $(printf '%s' "$notes" | { grep -oE '/pull/[0-9]+' || true; } | cut -d/ -f3 | sort -un); do
+              detail=$(gh pr view "$pr" --repo "$REPO" --json number,title,body \
+                --jq '"#### #\(.number) \(.title)\n\n\(.body // "" | .[0:6000])"' || true)
+              if [ -n "$detail" ]; then
+                pr_details+="$detail"$'\n\n'
+              fi
+            done
+
             # $'...' で改行を含む 1 行の文字列にし、YAML ブロックのインデントを崩さない
-            instructions=$'あなたは Android アプリ「Skylark Wallet」（すかいらーく優待券の残高管理・バーコード表示アプリ）のリリース担当です。以下は GitHub が自動生成したリリースノート（PR 一覧）です。これを読み、アプリの利用者（エンドユーザー）向けに、今回の変更点を日本語の箇条書きで要約してください。\n\n出力ルール:\n- Markdown のみを出力し、前置きや結びの文章は書かない。\n- 見出しは「### 新機能」「### 改善・修正」の 2 つを使う（該当する変更が無い見出しは省略）。\n- 各項目は体言止め（名詞で終える）で統一する。「〜しました」「〜した」「〜なった」などの述語で終えない。例:「ダークモード時に取り消しトーストが明るい帯で表示される問題の修正」。\n- PR から確認できる事実だけを書く。推測や誇張、効果・利点の主観的な説明（例:「〜しやすくなった」）は書かない。\n- 1 項目につき変更 1 つを簡潔に書き、PR タイトルをそのまま転記せず平易な日本語にする。\n- 絵文字は使わない。\n- CI / GitHub Actions / ドキュメント / リファクタリングなど、利用者に関係しない内部的な変更は含めない。\n- 各見出しの項目は最大 6 個程度に収め、重要なものを優先する。\n- 利用者向けの変更が 1 つも無い場合は、何も出力しない。'
+            instructions=$'あなたは Android アプリ「Skylark Wallet」（すかいらーく優待券の残高管理・バーコード表示アプリ）のリリース担当です。以下は GitHub が自動生成したリリースノート（PR 一覧）と、各 PR の本文です。これを読み、アプリの利用者（エンドユーザー）向けに、今回の変更点を日本語の箇条書きで要約してください。\n\n出力ルール:\n- Markdown のみを出力し、前置きや結びの文章は書かない。\n- 見出しは「### 新機能」「### 改善・修正」の 2 つを使う（該当する変更が無い見出しは省略）。\n- 新機能か改善・修正かは、PR タイトルの接頭辞（feat: / fix: など）ではなく、変更の中身で判断する。\n- 各項目は体言止め（名詞で終える）で統一する。「〜しました」「〜した」「〜なった」などの述語で終えない。例:「ダークモード時に取り消しトーストが明るい帯で表示される問題の修正」。\n- PR から確認できる事実だけを書く。推測や誇張、効果・利点の主観的な説明（例:「〜しやすくなった」）は書かない。\n- PR タイトルだけでなく本文に書かれた変更点も確認し、利用者に関係する変更は省かずに含める。項目数の上限は無い。\n- 1 項目につき変更 1 つを簡潔に書き、PR タイトルや本文をそのまま転記せず平易な日本語にする。クラス名・関数名などのコード上の名前は書かない。\n- 同じリリースの中で、後の PR が前の PR の変更を直している場合は、最終的な状態だけを書く。\n- 絵文字は使わない。\n- CI / GitHub Actions / ドキュメント / リファクタリング / テストなど、利用者に関係しない内部的な変更は含めない。PR 本文の「確認」欄など、変更内容以外の記述も含めない。\n- 利用者向けの変更が 1 つも無い場合は、何も出力しない。'
 
             # OAuth トークン（Claude Code）で /v1/messages を使う場合、system は
             # Claude Code の識別文だけにする。要約の指示は user メッセージに入れる。
             identity="You are Claude Code, Anthropic's official CLI for Claude."
 
-            # jq でペイロードを安全に組み立てる（改行や記号を含む notes をそのまま埋め込む）
-            jq -n --arg id "$identity" --arg ins "$instructions" --arg notes "$notes" \
+            # jq でペイロードを安全に組み立てる（改行や記号を含む notes・PR 本文をそのまま埋め込む）
+            jq -n --arg id "$identity" --arg ins "$instructions" --arg notes "$notes" --arg prs "$pr_details" \
               '{model: "claude-opus-5-5", max_tokens: 16000,
                 output_config: {effort: "low"},
                 system: [{type: "text", text: $id}],
                 messages: [{role: "user",
-                  content: ($ins + "\n\n以下が GitHub 自動生成のリリースノートです:\n\n" + $notes)}]}' > payload.json
+                  content: ($ins + "\n\n以下が GitHub 自動生成のリリースノートです:\n\n" + $notes
+                    + "\n\n以下が各 PR の本文です:\n\n" + $prs)}]}' > payload.json
 
             # 安全性の判定で断られた場合に別モデルで再実行する（fallbacks: "default"）。
             # OAuth トークンでこの beta が使えずエラーになったら、付けずに 1 回だけやり直す。
