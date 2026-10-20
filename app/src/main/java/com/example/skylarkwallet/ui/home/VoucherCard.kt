@@ -2,9 +2,11 @@ package com.example.skylarkwallet.ui.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +23,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -60,10 +64,13 @@ fun VoucherCard(
     onShowBarcode: () -> Unit,
     onEditMemo: () -> Unit,
     onDelete: () -> Unit,
+    /** 9桁の番号を表示する（認証は呼び出し側で行う）。 */
+    onRevealCode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by rememberSaveable(voucher.id) { mutableStateOf(false) }
     val motion = MaterialTheme.motionScheme
+    val detailsVisible = expanded || !voucher.isChecked
 
     ElevatedCard(
         onClick = { if (!voucher.isChecked) onRefresh() else expanded = !expanded },
@@ -81,11 +88,28 @@ fun VoucherCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = stringResource(R.string.voucher_last3, voucher.last3),
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // 全桁は末尾の横から確認する。秘密にしたい番号なので、カードを開いたときだけボタンを出す
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.voucher_last3, voucher.last3),
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        AnimatedVisibility(
+                            visible = detailsVisible,
+                            enter = expandHorizontally(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
+                            exit = shrinkHorizontally(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
+                        ) {
+                            IconButton(onClick = onRevealCode) {
+                                Icon(
+                                    Icons.Rounded.Visibility,
+                                    contentDescription = stringResource(R.string.action_show_code),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 // 残高と、その残高をいつ確認したかをまとめて右側に置く
@@ -122,7 +146,7 @@ fun VoucherCard(
             }
 
             AnimatedVisibility(
-                visible = expanded || !voucher.isChecked,
+                visible = detailsVisible,
                 enter = expandVertically(motion.defaultSpatialSpec()) + fadeIn(motion.defaultEffectsSpec()),
                 exit = shrinkVertically(motion.defaultSpatialSpec()) + fadeOut(motion.defaultEffectsSpec()),
             ) {
