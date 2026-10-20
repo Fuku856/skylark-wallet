@@ -11,4 +11,10 @@ import androidx.lifecycle.ViewModel
  */
 class LockViewModel : ViewModel() {
     var unlocked by mutableStateOf(false)
+
+    /**
+     * アプリ内の認証ダイアログが結果を待っているか。Android 9・10 では PIN・パターンの入力画面が別のタスクで開き、
+     * その間に onStop でロックがかかる。戻ってきたときに、その結果を待たずにロック画面から認証を重ねて出さないために使う。
+     */
+    var authenticating by mutableStateOf(false)
 }

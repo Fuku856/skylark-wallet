@@ -48,6 +48,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Activity が作り直されると、表示中だった認証ダイアログの結果は届かなくなる
+        lockViewModel.authenticating = false
         enableEdgeToEdge()
         setContent {
             val settings by settingsRepository.settings.collectAsStateWithLifecycle(initialValue = null)
@@ -72,7 +74,8 @@ class MainActivity : FragmentActivity() {
                 when {
                     current == null -> Box(Modifier.fillMaxSize())
                     current.biometricLock && canAuthenticate && !lockViewModel.unlocked ->
-                        LockScreen(onUnlock = ::authenticate)
+                        // アプリ内の認証の途中でロックした場合は、その結果を待つ（成功すればロックも解除される）
+                        LockScreen(onUnlock = ::authenticate, authenticating = lockViewModel.authenticating)
                     else -> SkylarkRoot(settings = current, refreshViewModel = refreshViewModel)
                 }
             }
@@ -100,7 +103,7 @@ class MainActivity : FragmentActivity() {
             subtitle = getString(R.string.lock_prompt_subtitle),
             onSuccess = { lockViewModel.unlocked = true },
             // 認証の手段が無くなった場合はロックを外す（キャンセルや試行回数超過ではロックしたまま）
-            onError = { if (it in BiometricAuth.UNAVAILABLE_ERRORS) canAuthenticate = false },
+            onError = { code, _ -> if (code in BiometricAuth.UNAVAILABLE_ERRORS) canAuthenticate = false },
         )
     }
 
