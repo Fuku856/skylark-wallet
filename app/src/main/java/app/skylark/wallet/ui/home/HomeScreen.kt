@@ -41,7 +41,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -80,6 +79,7 @@ import app.skylark.wallet.R
 import app.skylark.wallet.domain.model.MemoNormalizer
 import app.skylark.wallet.domain.model.Voucher
 import app.skylark.wallet.ui.common.Format
+import app.skylark.wallet.ui.common.SwipeableSnackbarHost
 import app.skylark.wallet.ui.lock.BiometricAuth
 import app.skylark.wallet.ui.settings.SecretSettingsDialog
 import kotlinx.coroutines.launch
@@ -152,7 +152,7 @@ fun HomeScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeableSnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(
             Modifier
