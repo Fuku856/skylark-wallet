@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.skylark.wallet.R
+import app.skylark.wallet.data.captcha.CaptchaPreprocessor
 import app.skylark.wallet.ui.common.KeyboardBottomSheet
 
 /** CAPTCHA（画像の番号）を人が読んで入力するシート。 */
@@ -82,11 +83,12 @@ private fun CaptchaContent(
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val awaiting = phase is RefreshViewModel.Phase.AwaitingCaptcha
-    val canSubmit = awaiting && RefreshViewModel.CAPTCHA_PATTERN.matches(input)
+    val canSubmit = awaiting && CaptchaPreprocessor.CAPTCHA_PATTERN.matches(input)
 
     // 画像の読み込みを待たずにキーボードを出し、シートとキーボードが一緒に上がるようにする。
-    // 読み込み中も入力はできるが、送信は画像が表示されるまでできない
-    LaunchedEffect(state.target.id, state.captchaVersion) {
+    // 読み込み中も入力はできるが、送信は画像が表示されるまでできない。自動で読み取っている間は出さない
+    LaunchedEffect(state.target.id, state.captchaVersion, state.autoSolving) {
+        if (state.autoSolving) return@LaunchedEffect
         focusRequester.requestFocus()
         keyboard?.show()
     }
@@ -133,8 +135,9 @@ private fun CaptchaContent(
                 targetState = when (phase) {
                     is RefreshViewModel.Phase.AwaitingCaptcha -> phase.image
                     is RefreshViewModel.Phase.Submitting -> phase.image
-                    is RefreshViewModel.Phase.AutoCaptchaLimitReached -> phase.lastImage
-                    RefreshViewModel.Phase.Loading -> null
+                    RefreshViewModel.Phase.Loading,
+                    RefreshViewModel.Phase.AutoCaptchaLimitReached,
+                    -> null
                 },
                 transitionSpec = { fadeIn(effects) togetherWith fadeOut(effects) },
                 label = "captcha",
@@ -174,6 +177,13 @@ private fun CaptchaContent(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+        AnimatedVisibility(visible = state.autoSolving) {
+            Text(
+                text = stringResource(R.string.captcha_auto_solving),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
 
         OutlinedTextField(
             value = input,
@@ -181,7 +191,7 @@ private fun CaptchaContent(
             label = { Text(stringResource(R.string.captcha_input_label)) },
             supportingText = { Text(stringResource(R.string.captcha_input_hint)) },
             singleLine = true,
-            enabled = phase !is RefreshViewModel.Phase.Submitting,
+            enabled = phase !is RefreshViewModel.Phase.Submitting && !state.autoSolving,
             textStyle = MaterialTheme.typography.headlineMedium,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (canSubmit) onSubmit(input) }),

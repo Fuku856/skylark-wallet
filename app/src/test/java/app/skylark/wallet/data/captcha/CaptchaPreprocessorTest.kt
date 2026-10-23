@@ -32,6 +32,23 @@ class CaptchaPreprocessorTest {
     }
 
     @Test
+    fun luminanceOnWhite_transparentPixel_isWhite() {
+        assertEquals(255, CaptchaPreprocessor.luminanceOnWhite(0x00000000))
+        assertEquals(255, CaptchaPreprocessor.luminanceOnWhite(0x00FF0000))
+    }
+
+    @Test
+    fun luminanceOnWhite_opaquePixel_usesColor() {
+        assertEquals(0, CaptchaPreprocessor.luminanceOnWhite(0xFF000000.toInt()))
+        assertEquals(255, CaptchaPreprocessor.luminanceOnWhite(0xFFFFFFFF.toInt()))
+    }
+
+    @Test
+    fun luminanceOnWhite_halfTransparentBlack_isGray() {
+        assertEquals(127, CaptchaPreprocessor.luminanceOnWhite(0x80000000.toInt()))
+    }
+
+    @Test
     fun normalizeText_tooShortOrTooLong_returnsNull() {
         assertNull(CaptchaPreprocessor.normalizeText("123")) // 3桁は不適合
         assertNull(CaptchaPreprocessor.normalizeText("123456")) // 6桁は不適合

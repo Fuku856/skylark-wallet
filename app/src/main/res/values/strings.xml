@@ -68,6 +68,7 @@
     <string name="captcha_submit">送信</string>
     <string name="captcha_skip">スキップ</string>
     <string name="captcha_abort">中止</string>
+    <string name="captcha_auto_solving">画像の番号を自動で読み取っています…</string>
     <string name="refresh_updated">%1$s の残高を更新しました（%2$s円）</string>
     <string name="refresh_batch_finished">%1$d / %2$d 枚を更新しました</string>
     <string name="refresh_nothing">更新できる優待券がありません</string>
@@ -177,6 +178,6 @@
     <string name="secret_settings_auto_captcha_title">CAPTCHAを自動で入力</string>
     <string name="secret_settings_auto_captcha_description">優待券照会時のCAPTCHA画像を端末内で自動認識します。デフォルトはOFF（自分で解く）です。</string>
     <string name="auto_captcha_failed_title">自動認証に失敗しました</string>
-    <string name="auto_captcha_failed_message">CAPTCHAの自動認識が3回連続で失敗しました。画像を変えて再試行しますか？それとも手動で入力しますか？</string>
+    <string name="auto_captcha_failed_message">CAPTCHAの自動認識が%1$d回連続で失敗しました。画像を変えて再試行しますか？それとも手動で入力しますか？</string>
     <string name="auto_captcha_manual_input">手動で入力</string>
 </resources>

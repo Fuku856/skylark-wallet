@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.skylark.wallet.R
+import app.skylark.wallet.data.captcha.CaptchaPreprocessor
 import app.skylark.wallet.data.captcha.CaptchaSolver
 import app.skylark.wallet.data.local.prefs.SettingsRepository
 import app.skylark.wallet.data.remote.SiteMaintenanceException
@@ -36,6 +37,9 @@ import javax.inject.Inject
  * 照会（CAPTCHA 手入力）の状態を管理する。Activity スコープで共有し、ホーム・バーコード画面のどちらからでも使う。
  *
  * 状態遷移: Loading → AwaitingCaptcha → Submitting → (成功 → 次の券 / CAPTCHA 不一致 → AwaitingCaptcha / エラー → 終了)
+ *
+ * 自動CAPTCHA が ON のときは AwaitingCaptcha を経ずに端末内で読み取って送信し、
+ * [MAX_AUTO_ATTEMPTS] 回続けて失敗したら AutoCaptchaLimitReached でユーザーに次の操作を尋ねる。
  */
 @HiltViewModel
 class RefreshViewModel @Inject constructor(
@@ -50,8 +54,8 @@ class RefreshViewModel @Inject constructor(
         data object Loading : Phase
         data class AwaitingCaptcha(val image: ImageBitmap, val mismatch: Boolean, val message: String?) : Phase
         data class Submitting(val image: ImageBitmap) : Phase
-        /** 自動再試行が3回失敗したときのポップアップ待機フェーズ */
-        data class AutoCaptchaLimitReached(val lastImage: ImageBitmap) : Phase
+        /** 自動の読み取りが上限まで失敗し、次の操作をユーザーに尋ねている。 */
+        data object AutoCaptchaLimitReached : Phase
     }
 
     data class Progress(val current: Int, val total: Int)
@@ -65,6 +69,8 @@ class RefreshViewModel @Inject constructor(
             val progress: Progress?,
             /** 入力欄をクリアするためのカウンタ。新しい画像を表示するたびに増える。 */
             val captchaVersion: Int,
+            /** 番号を端末内で自動で読み取っている間は true。手動入力に切り替えると false になる。 */
+            val autoSolving: Boolean = false,
         ) : UiState
     }
 
@@ -100,7 +106,12 @@ class RefreshViewModel @Inject constructor(
     private var index = 0
     private var succeeded = 0
     private var captchaVersion = 0
-    private var autoRetryCount = 0
+
+    /** 照会を始めた時点の自動CAPTCHA の設定。 */
+    private var autoCaptcha = false
+
+    /** 今の券で自動の読み取り・送信が続けて失敗した回数。 */
+    private var autoFailures = 0
 
     /** ネットワークエラー時の「再試行」で、中断した券から再開するための記録。 */
     private data class RetryPoint(val mode: Mode, val queue: List<Voucher>, val index: Int, val succeeded: Int)
@@ -144,11 +155,13 @@ class RefreshViewModel @Inject constructor(
     }
 
     private suspend fun begin(newMode: Mode, newQueue: List<Voucher>, startIndex: Int, startSucceeded: Int = 0) {
-        if (!settingsRepository.current().termsAgreed) {
+        val settings = settingsRepository.current()
+        if (!settings.termsAgreed) {
             _events.send(Event.TermsRequired)
             return
         }
         retryPoint = null
+        autoCaptcha = settings.autoCaptcha
         job?.cancel()
         mode = newMode
         queue = newQueue
@@ -163,13 +176,12 @@ class RefreshViewModel @Inject constructor(
     private fun startCurrent() {
         val target = queue.getOrNull(index) ?: return finish()
         closeSession()
-        autoRetryCount = 0
-        _state.value = UiState.Active(target, Phase.Loading, currentProgress(), captchaVersion)
+        autoFailures = 0
+        _state.value = UiState.Active(target, Phase.Loading, currentProgress(), captchaVersion, autoCaptcha)
         job = viewModelScope.launch {
             try {
                 val started = startRefresh()
                 session = started.session
-                val autoCaptcha = settingsRepository.current().autoCaptcha
                 if (autoCaptcha) {
                     tryAutoSolve(started.captcha, started.session, target)
                 } else {
@@ -188,6 +200,11 @@ class RefreshViewModel @Inject constructor(
         val active = _state.value as? UiState.Active ?: return
         if (active.phase !is Phase.AwaitingCaptcha) return
         val current = session ?: return
+        reloadCaptcha(active, current)
+    }
+
+    /** 同じセッションで新しい画像を取り直し、手入力を待つ。 */
+    private fun reloadCaptcha(active: UiState.Active, current: LookupSession) {
         _state.value = active.copy(phase = Phase.Loading)
         job = viewModelScope.launch {
             try {
@@ -204,7 +221,7 @@ class RefreshViewModel @Inject constructor(
         val active = _state.value as? UiState.Active ?: return
         val phase = active.phase as? Phase.AwaitingCaptcha ?: return // 二重送信防止
         val current = session ?: return
-        if (!CAPTCHA_PATTERN.matches(captcha)) return
+        if (!CaptchaPreprocessor.CAPTCHA_PATTERN.matches(captcha)) return
         executeSubmit(current, active.target, captcha, phase.image, isAuto = false)
     }
 
@@ -231,7 +248,7 @@ class RefreshViewModel @Inject constructor(
                     }
                     is LookupOutcome.CaptchaMismatch -> {
                         if (isAuto) {
-                            handleAutoCaptchaFailure(image, current)
+                            handleAutoCaptchaFailure(current)
                         } else {
                             showCaptcha(current.fetchCaptcha(), mismatch = true, message = outcome.message)
                         }
@@ -257,48 +274,41 @@ class RefreshViewModel @Inject constructor(
         }
     }
 
+    /** 画像を端末内で読み取り、読めたら送信する。呼び出し元のジョブで例外を処理する。 */
     private suspend fun tryAutoSolve(bytes: ByteArray, currentSession: LookupSession, target: Voucher) {
         val image = decodeImageBitmap(bytes)
-        when (val solveResult = captchaSolver.solve(bytes)) {
-            is CaptchaSolver.SolveResult.Success -> {
-                executeSubmit(currentSession, target, solveResult.digits, image, isAuto = true)
-            }
-            is CaptchaSolver.SolveResult.Failure -> {
-                handleAutoCaptchaFailure(image, currentSession)
-            }
-        }
-    }
-
-    private suspend fun handleAutoCaptchaFailure(lastImage: ImageBitmap, currentSession: LookupSession) {
         val active = _state.value as? UiState.Active ?: return
-        if (autoRetryCount < MAX_AUTO_RETRIES) {
-            autoRetryCount++
-            _state.value = active.copy(phase = Phase.Loading)
-            try {
-                val newBytes = currentSession.fetchCaptcha()
-                tryAutoSolve(newBytes, currentSession, active.target)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                fail(e)
-            }
-        } else {
-            // 3回自動再試行しても失敗した場合は一旦中断してポップアップを表示
-            _state.value = active.copy(phase = Phase.AutoCaptchaLimitReached(lastImage))
+        // 読み取り中も画像は見せるが、入力はさせない
+        _state.value = active.copy(phase = Phase.Submitting(image))
+        when (val solveResult = captchaSolver.solve(bytes)) {
+            is CaptchaSolver.SolveResult.Success ->
+                executeSubmit(currentSession, target, solveResult.digits, image, isAuto = true)
+            is CaptchaSolver.SolveResult.Failure -> handleAutoCaptchaFailure(currentSession)
         }
     }
 
-    /** 自動再試行が3回失敗したポップアップで「再試行」を押したとき */
+    /** 自動の読み取り・送信が失敗したとき、上限までは画像を取り直してやり直す。 */
+    private suspend fun handleAutoCaptchaFailure(currentSession: LookupSession) {
+        val active = _state.value as? UiState.Active ?: return
+        autoFailures++
+        if (autoFailures >= MAX_AUTO_ATTEMPTS) {
+            _state.value = active.copy(phase = Phase.AutoCaptchaLimitReached)
+            return
+        }
+        _state.value = active.copy(phase = Phase.Loading)
+        tryAutoSolve(currentSession.fetchCaptcha(), currentSession, active.target)
+    }
+
+    /** 自動の読み取りが上限まで失敗したあと、画像を取り直して自動でやり直す。 */
     fun retryAutoCaptcha() {
         val active = _state.value as? UiState.Active ?: return
         if (active.phase !is Phase.AutoCaptchaLimitReached) return
         val current = session ?: return
-        autoRetryCount = 0
+        autoFailures = 0
         _state.value = active.copy(phase = Phase.Loading)
         job = viewModelScope.launch {
             try {
-                val newBytes = current.fetchCaptcha()
-                tryAutoSolve(newBytes, current, active.target)
+                tryAutoSolve(current.fetchCaptcha(), current, active.target)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -307,16 +317,13 @@ class RefreshViewModel @Inject constructor(
         }
     }
 
-    /** 自動再試行が3回失敗したポップアップで「手動で入力」を押したとき */
+    /** 自動の読み取りが上限まで失敗したあと、今の券は手入力に切り替える。 */
     fun fallbackToManual() {
         val active = _state.value as? UiState.Active ?: return
-        val limitPhase = active.phase as? Phase.AutoCaptchaLimitReached ?: return
-        autoRetryCount = 0
-        captchaVersion++
-        _state.value = active.copy(
-            phase = Phase.AwaitingCaptcha(limitPhase.lastImage, mismatch = true, message = null),
-            captchaVersion = captchaVersion,
-        )
+        if (active.phase !is Phase.AutoCaptchaLimitReached) return
+        val current = session ?: return
+        // 最後の画像は自動で送って不一致になり、使えなくなっていることがあるので取り直す
+        reloadCaptcha(active.copy(autoSolving = false), current)
     }
 
     /** 一括更新で今の券を飛ばして次へ進む。 */
@@ -340,7 +347,6 @@ class RefreshViewModel @Inject constructor(
 
     private fun finish(notify: Boolean = false) {
         closeSession()
-        autoRetryCount = 0
         if (notify) _events.trySend(Event.BatchFinished(succeeded, queue.size))
         _state.value = UiState.Idle
         queue = emptyList()
@@ -387,13 +393,10 @@ class RefreshViewModel @Inject constructor(
 
     override fun onCleared() {
         closeSession()
-        autoRetryCount = 0
     }
 
     companion object {
-        /** 画像の番号は4〜5桁の半角数字。 */
-        val CAPTCHA_PATTERN = Regex("^\\d{4,5}$")
-        /** 自動再試行の最大回数（3回まで勝手に再試行）。 */
-        const val MAX_AUTO_RETRIES = 3
+        /** 1枚の券で自動の読み取り・送信を続けて試す回数。これだけ失敗したらユーザーに尋ねる。 */
+        const val MAX_AUTO_ATTEMPTS = 3
     }
 }

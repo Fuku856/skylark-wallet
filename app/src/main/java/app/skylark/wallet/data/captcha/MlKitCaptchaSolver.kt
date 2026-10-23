@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -45,6 +46,8 @@ class MlKitCaptchaSolver @Inject constructor() : CaptchaSolver {
                 } else {
                     CaptchaSolver.SolveResult.Failure("Unmatched digits from text: '${visionText.text}'")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 CaptchaSolver.SolveResult.Failure(e.message)
             }

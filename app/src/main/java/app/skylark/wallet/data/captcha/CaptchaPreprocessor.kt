@@ -21,12 +21,7 @@ object CaptchaPreprocessor {
         val grays = IntArray(totalPixels)
         val histogram = IntArray(256)
         for (i in 0 until totalPixels) {
-            val c = pixels[i]
-            val r = (c shr 16) and 0xFF
-            val g = (c shr 8) and 0xFF
-            val b = c and 0xFF
-            // 整数による高速輝度計算: Y = (77*R + 150*G + 29*B) >> 8
-            val gray = (77 * r + 150 * g + 29 * b) shr 8
+            val gray = luminanceOnWhite(pixels[i])
             grays[i] = gray
             histogram[gray]++
         }
@@ -66,6 +61,19 @@ object CaptchaPreprocessor {
         }
 
         return Bitmap.createBitmap(resultPixels, width, height, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * 白い背景に重ねたときの輝度（0〜255）。透過 PNG の透明な部分を黒（文字）と見なさないよう、アルファで白と合成する。
+     */
+    fun luminanceOnWhite(argb: Int): Int {
+        val a = (argb ushr 24) and 0xFF
+        val r = (argb shr 16) and 0xFF
+        val g = (argb shr 8) and 0xFF
+        val b = argb and 0xFF
+        // 整数による高速輝度計算: Y = (77*R + 150*G + 29*B) >> 8
+        val gray = (77 * r + 150 * g + 29 * b) shr 8
+        return (gray * a + 255 * (255 - a)) / 255
     }
 
     /**
