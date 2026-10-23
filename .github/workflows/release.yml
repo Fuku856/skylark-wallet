@@ -15,6 +15,16 @@ jobs:
   release-notes:
     runs-on: ubuntu-latest
     steps:
+      # 比較元のタグが今回のタグの履歴に含まれるかを git で調べるため、全履歴とタグを取得する。
+      # 必要なのはコミットの親子関係だけなので、過去のファイル内容は取らず、トークンも残さない。
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
       - name: Generate and overwrite release notes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,12 +41,23 @@ jobs:
           # 比較元（前回リリース）を明示する。省略すると GitHub が古いタグを選び、
           # 前回までにリリース済みの PR まで変更点に混ざるため。
           # プレリリースは直前のリリース（ベータ含む）、正式版は直前の正式版と比較する。
-          prev=$(gh release list --repo "$REPO" --exclude-drafts --limit 100 \
+          # ただし今回のタグの履歴に含まれるリリースだけを候補にする。正式版のタグは main 上の
+          # マージコミットに打つため dev の履歴には無く、公開日時だけで選ぶと、ベータを正式版と
+          # 比較して前のベータで出した PR まで変更点に混ざる。
+          prev=""
+          candidates=$(gh release list --repo "$REPO" --exclude-drafts --limit 100 \
             --json tagName,isPrerelease,publishedAt \
             | jq -r --arg tag "$TAG" --arg at "$PUBLISHED_AT" --arg pre "$PRERELEASE" '
                 [.[] | select(.tagName != $tag and .publishedAt < $at
                               and ($pre == "true" or .isPrerelease == false))]
-                | sort_by(.publishedAt) | last | .tagName // empty')
+                | sort_by(.publishedAt) | reverse | .[].tagName')
+          for cand in $candidates; do
+            if git merge-base --is-ancestor "refs/tags/$cand" HEAD 2>/dev/null; then
+              prev=$cand
+              break
+            fi
+            echo "skip $cand (not in the history of $TAG)"
+          done
           args=(-f tag_name="$TAG")
           if [ -n "$prev" ]; then
             args+=(-f previous_tag_name="$prev")
