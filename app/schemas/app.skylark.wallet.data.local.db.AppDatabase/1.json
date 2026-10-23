@@ -1,0 +1,84 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "1b982fc1b1c98ba761c3170e3d8a0595",
+    "entities": [
+      {
+        "tableName": "vouchers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `encryptedCode9` TEXT NOT NULL, `encryptedBarcode13` TEXT, `encryptedResultHtml` TEXT, `balance` INTEGER, `expiryAt` INTEGER, `balanceCheckedAt` INTEGER, `lastUpdatedAt` INTEGER, `memo` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `lastError` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encryptedCode9",
+            "columnName": "encryptedCode9",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encryptedBarcode13",
+            "columnName": "encryptedBarcode13",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "encryptedResultHtml",
+            "columnName": "encryptedResultHtml",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "balance",
+            "columnName": "balance",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "expiryAt",
+            "columnName": "expiryAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "balanceCheckedAt",
+            "columnName": "balanceCheckedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastUpdatedAt",
+            "columnName": "lastUpdatedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "memo",
+            "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastError",
+            "columnName": "lastError",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1b982fc1b1c98ba761c3170e3d8a0595')"
+    ]
+  }
+}

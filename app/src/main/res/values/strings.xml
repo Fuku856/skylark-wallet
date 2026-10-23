@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Skylark Wallet</string>
+
+    <!-- 共通 -->
+    <string name="cancel">キャンセル</string>
+    <string name="save">保存</string>
+    <string name="back">戻る</string>
+    <string name="close">閉じる</string>
+    <string name="retry">再試行</string>
+    <string name="yen_unit">円</string>
+    <string name="yen_format">%1$,d円</string>
+    <string name="yen_format_text">%1$s円</string>
+    <string name="balance_unknown">残高未確認</string>
+    <string name="voucher_default_name">優待券</string>
+    <string name="voucher_last3">末尾 %1$s</string>
+    <string name="voucher_expiry">有効期限 %1$s まで</string>
+    <string name="voucher_checked_at">最終確認 %1$s</string>
+    <string name="voucher_tap_to_check">タップして残高を照会</string>
+
+    <!-- ホーム -->
+    <string name="hero_label">総残高</string>
+    <string name="hero_updated">最終更新 %1$s</string>
+    <string name="hero_not_updated">まだ照会していません</string>
+    <string name="empty_title">優待券が登録されていません</string>
+    <string name="empty_message">「追加」から9桁のご優待番号を登録すると、残高とバーコードを取得できます。</string>
+    <string name="section_used">使用済み（%1$d）</string>
+    <string name="badge_expiring">あと%1$d日</string>
+    <string name="badge_expired">期限切れ</string>
+    <string name="badge_stale">要更新</string>
+    <string name="badge_error">エラー</string>
+    <string name="badge_used">使用済み</string>
+    <string name="action_add">追加</string>
+    <string name="action_refresh">更新</string>
+    <string name="action_barcode">バーコード</string>
+    <string name="action_edit_memo">メモを編集</string>
+    <string name="action_delete">削除</string>
+    <string name="action_show_code">ご優待番号を表示</string>
+    <string name="code_title">ご優待番号</string>
+    <string name="code_auth_unavailable">番号を確認するには、端末に画面ロック（指紋・PIN など）を設定してください</string>
+    <string name="delete_title">優待券を削除</string>
+    <string name="delete_message">「%1$s」（末尾 %2$s）を削除します。保存したバーコードも消えます。</string>
+    <string name="unreadable_message">%1$d 枚の優待券を読み込めませんでした。端末の暗号鍵が無効になったため、保存した番号を復元できません。削除してから、お手元の番号で登録し直してください。</string>
+    <string name="unreadable_delete_action">読み込めない券を削除</string>
+    <string name="unreadable_delete_title">読み込めない券を削除</string>
+    <string name="unreadable_delete_message">読み込めない %1$d 枚の優待券を削除します。</string>
+
+    <!-- コード登録 -->
+    <string name="add_title">ご優待番号を登録</string>
+    <string name="add_description">優待券に記載の9桁の英数字を入力してください。ハイフンや空白は自動で取り除きます。</string>
+    <string name="add_code_label">ご優待番号（9桁）</string>
+    <string name="add_code_count">%1$d / %2$d</string>
+    <string name="add_paste">クリップボードから貼り付け</string>
+    <string name="add_memo_label">メモ（任意）</string>
+    <string name="add_submit">登録して照会</string>
+    <string name="add_error_duplicate">このご優待番号は登録済みです</string>
+    <string name="add_error_format">9桁の半角英数字を入力してください</string>
+
+    <!-- 照会（CAPTCHA） -->
+    <string name="captcha_title">画像の番号を入力</string>
+    <string name="captcha_target">%1$s（末尾 %2$s）</string>
+    <string name="captcha_progress">%1$d / %2$d</string>
+    <string name="captcha_image_description">画像の番号</string>
+    <string name="captcha_change_image">画像交換</string>
+    <string name="captcha_input_label">画像の番号</string>
+    <string name="captcha_input_hint">画像に表示されている4〜5桁の数字</string>
+    <string name="captcha_mismatch">画像の番号が一致しませんでした。新しい画像の番号を入力してください。</string>
+    <string name="captcha_submit">送信</string>
+    <string name="captcha_skip">スキップ</string>
+    <string name="captcha_abort">中止</string>
+    <string name="refresh_updated">%1$s の残高を更新しました（%2$s円）</string>
+    <string name="refresh_batch_finished">%1$d / %2$d 枚を更新しました</string>
+    <string name="refresh_nothing">更新できる優待券がありません</string>
+    <string name="error_network">通信できませんでした。電波の状態を確認してください。</string>
+    <string name="error_invalid_code">ご優待番号が無効です。</string>
+    <string name="error_maintenance">サイトがメンテナンス中です。時間をおいてお試しください。</string>
+    <string name="error_parse">結果を読み取れませんでした。サイトの仕様が変わった可能性があります。</string>
+    <string name="error_unknown">照会に失敗しました。</string>
+
+    <!-- バーコード -->
+    <string name="barcode_title">バーコード</string>
+    <string name="barcode_empty">表示できるバーコードがありません。\n優待券を照会するとバーコードを取得できます。</string>
+    <string name="barcode_hint">画面を明るくしてご提示ください。バーコードをタップすると明るさを切り替えます。</string>
+    <string name="barcode_brightness">画面の明るさ</string>
+    <string name="barcode_checked_at">%1$s 時点の残高</string>
+    <string name="official_button">公式画面で表示</string>
+    <string name="official_title">公式画面</string>
+    <string name="official_message">最新の公式画面を表示するには、画像の番号の入力が必要です。保存済みの画面は前回照会した時点のものです。</string>
+    <string name="official_latest">最新を表示</string>
+    <string name="official_saved">保存済みを表示</string>
+    <string name="official_missing">保存済みの画面がありません。</string>
+    <string name="official_snapshot">%1$s に照会したときの画面です</string>
+
+    <!-- 規約 -->
+    <string name="terms_title">ご利用の前に</string>
+    <string name="terms_body">このアプリは、すかいらーく優待券サービスサイトに代わってご優待番号と画像の番号を送信し、残高・有効期限・バーコードを取得します。\n\nサイトの照会には「すかいらーくご優待券ご利用規約」への同意が必要です。内容をご確認のうえ、同意してください。</string>
+    <string name="terms_privacy">ご優待番号・バーコード番号・照会結果は端末内で暗号化して保存し、外部のサーバーには送りません。サイトへのアクセスは、照会の操作をしたときだけ行います。</string>
+    <string name="terms_open">利用規約を開く</string>
+    <string name="terms_web_title">利用規約</string>
+    <string name="terms_checkbox">利用規約に同意する</string>
+    <string name="terms_agree">同意して続ける</string>
+    <string name="terms_later">同意せずに続ける（照会はできません）</string>
+    <string name="terms_revoke">同意を取り消す</string>
+
+    <!-- 設定 -->
+    <string name="settings_title">設定</string>
+    <string name="settings_biometric">起動時にロック</string>
+    <string name="settings_biometric_summary">生体認証または画面ロックで解除します</string>
+    <string name="settings_biometric_unavailable">この端末では生体認証・画面ロックが設定されていません</string>
+    <string name="settings_brightness">バーコード表示時に明るさを最大にする</string>
+    <string name="settings_brightness_summary">バーコード表示時に自動で最大輝度にします</string>
+    <string name="settings_notification">有効期限の通知</string>
+    <string name="settings_notification_summary">期限の30日前と7日前にお知らせします（サイトにはアクセスしません）</string>
+    <string name="settings_terms">サイトの利用規約</string>
+    <string name="settings_terms_agreed">同意済み</string>
+    <string name="settings_terms_not_agreed">未同意（照会できません）</string>
+    <string name="settings_privacy">データの保存</string>
+    <string name="settings_privacy_summary">ご優待番号・バーコード番号・照会結果は Android Keystore で保護した鍵（AES-256-GCM）で暗号化して保存します。データは端末の外に出ません。機種変更のときは「バックアップを作成」で新しい端末に移せます。</string>
+    <string name="settings_theme">テーマ</string>
+    <string name="settings_theme_system">システム既定</string>
+    <string name="settings_theme_light">ライト</string>
+    <string name="settings_theme_dark">ダーク</string>
+    <string name="settings_github">GitHub</string>
+
+    <!-- バックアップ（端末移行） -->
+    <string name="backup_category">バックアップ</string>
+    <string name="backup_export">バックアップを作成</string>
+    <string name="backup_export_summary">機種変更のために、優待券を暗号化したファイルに保存します</string>
+    <string name="backup_auth_title">バックアップを作成</string>
+    <string name="backup_auth_subtitle">本人確認のため認証してください</string>
+    <string name="backup_auth_unavailable">バックアップを作成するには本人確認が必要です。端末の設定で画面ロック（PIN・パターン・パスワード）または生体認証を設定してから、もう一度お試しください。</string>
+    <string name="backup_export_notice">優待券（ご優待番号・バーコード番号・残高・照会結果・メモ）を、1つのファイルに暗号化して保存します。
+
+保存が終わると、ファイルを開くためのパスワードを1度だけ表示します。新しい端末で「バックアップから復元」を選び、ファイルとパスワードで読み込んでください。
+
+ファイルとパスワードの両方が他人に渡ると、優待券を使われるおそれがあります。</string>
+    <string name="backup_choose_location">保存先を選ぶ</string>
+    <string name="backup_working">処理しています…</string>
+    <string name="backup_password_title">パスワードを控えてください</string>
+    <string name="backup_password_message">%1$d 枚の優待券を保存しました。復元するときに次のパスワードが必要です。</string>
+    <string name="backup_password_warning">パスワードはこの画面でしか表示できません。紙に書き留め、ファイルとは別に保管してください（スクリーンショットは撮れません）。移行が終わったら、ファイルとメモは削除・処分してください。</string>
+    <string name="backup_password_noted">パスワードを書き留めました</string>
+    <string name="backup_import">バックアップから復元</string>
+    <string name="backup_import_summary">「バックアップを作成」で保存したファイルから優待券を読み込みます</string>
+    <string name="backup_password_input_message">バックアップを作成したときに表示されたパスワードを入力してください。ハイフンや空白、大文字・小文字は区別しません。</string>
+    <string name="backup_password_label">パスワード</string>
+    <string name="backup_restore">復元</string>
+    <string name="backup_import_done_title">復元しました</string>
+    <string name="backup_import_added">%1$d 枚の優待券を追加しました。</string>
+    <string name="backup_import_skipped_duplicate">登録済みの %1$d 枚は飛ばしました。</string>
+    <string name="backup_import_skipped_invalid">ご優待番号が正しくない %1$d 枚は飛ばしました。</string>
+    <string name="backup_import_delete_file">移行が終わったら、バックアップファイルとパスワードのメモは削除・処分してください。</string>
+    <string name="backup_error_title">バックアップを処理できませんでした</string>
+    <string name="backup_error_wrong_password">パスワードが違うか、ファイルが壊れています</string>
+    <string name="backup_error_corrupted">ファイルが壊れています。</string>
+    <string name="backup_error_not_backup">このアプリのバックアップファイルではありません。</string>
+    <string name="backup_error_version">新しいバージョンのアプリで作成されたファイルです。アプリを更新してから読み込んでください。</string>
+    <string name="backup_error_io">ファイルを読み書きできませんでした。保存先を変えてお試しください。</string>
+    <string name="settings_version_format">v%1$s</string>
+    <string name="settings_copyright" translatable="false">Copyright (c) 2026 Fuku856</string>
+
+    <!-- ロック -->
+    <string name="lock_title">ロックされています</string>
+    <string name="lock_unlock">ロックを解除</string>
+    <string name="lock_prompt_title">Skylark Wallet のロック解除</string>
+    <string name="lock_prompt_subtitle">優待券を表示するには認証してください</string>
+    <string name="lock_enable_prompt_title">起動時のロックを有効にする</string>
+    <string name="lock_enable_prompt_subtitle">ロックを解除できることを確かめるため、認証してください</string>
+    <string name="code_prompt_subtitle">番号を表示するには認証してください</string>
+
+    <!-- 通知 -->
+    <string name="notification_channel_expiry">有効期限のお知らせ</string>
+    <string name="notification_expiry_title">優待券の有効期限まであと%1$d日です</string>
+    <string name="notification_expiry_text">%1$s（残高 %2$s）</string>
+</resources>

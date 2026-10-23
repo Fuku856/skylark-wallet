@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--
+  合成データ（実際のサイトの応答ではない）。
+  サイトの /css/public.css にある body.inp 向けスタイル（hgroup.ticket p.val / p.date、
+  div.rwb .bcode img / span、.cau、.limit）と、実装計画書に記載の表示項目から作成した。
+  実際の結果画面を取得できたら、番号をマスクしたうえで差し替えること。
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>すかいらーく | 優待券</title>
+<link rel="stylesheet" href="/css/public.css">
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+</head>
+<body class="inp">
+<header id="gh">
+  <h1><img src="/img/p_logo.png"> すかいらーく優待券サービス</h1>
+</header>
+<section id="container">
+  <hgroup class="ticket">
+    <h1>すかいらーくご優待券</h1>
+    <h2>残高</h2>
+    <p class="val">0<span>円</span></p>
+    <p class="date">2026年 10月 19日 午後2:29時点の残高</p>
+  </hgroup>
+  <div class="rwb">
+    <div class="bcode">
+      <img src="/input/barcode?6674577439187">
+      <br>
+      <span>6674577439187</span>
+    </div>
+    <p class="cau">画面を明るくしてご提示ください。</p>
+    <p class="limit">有効期限<br>2027 年 03月 10日 23時59分迄</p>
+    <p id="clock">2026/10/19 14:29:05</p>
+  </div>
+</section>
+<footer id="gc">
+  <p>Copyright &copy; SKYLARK GROUP All Rights Reserved.</p>
+</footer>
+</body>
+</html>
