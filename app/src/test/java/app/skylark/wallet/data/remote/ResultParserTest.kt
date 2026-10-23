@@ -84,6 +84,11 @@ class ResultParserTest {
     }
 
     @Test
+    fun `detects actual maintenance page`() {
+        assertEquals(ResultParser.Outcome.Maintenance, ResultParser.parse(Fixtures.read("maintenance_actual.html")))
+    }
+
+    @Test
     fun `unexpected page is unknown`() {
         assertEquals(ResultParser.Outcome.Unknown, ResultParser.parse("<html><body><p>Not Found</p></body></html>"))
     }

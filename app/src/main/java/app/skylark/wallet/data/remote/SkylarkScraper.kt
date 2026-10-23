@@ -40,7 +40,7 @@ class SkylarkScraper(
         val url = endpoint.inputUrl
         val html = session.client.newCall(Request.Builder().url(url).get().build()).execute().use { it.bodyOrThrow() }
         val doc = Jsoup.parse(html, url.toString())
-        if (doc.selectFirst(ResultParser.SELECTOR_MAINTENANCE) != null) throw SiteMaintenanceException()
+        if (ResultParser.isMaintenance(doc)) throw SiteMaintenanceException()
         val form = InputForm.parse(doc, url) ?: throw UnexpectedPageException("input form not found")
         session.form = form
         form

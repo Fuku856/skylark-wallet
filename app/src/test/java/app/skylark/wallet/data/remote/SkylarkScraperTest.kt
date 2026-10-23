@@ -119,4 +119,10 @@ class SkylarkScraperTest {
         server.enqueue(html(Fixtures.read("maintenance.html")))
         scraper.open(scraper.newSession())
     }
+
+    @Test(expected = SiteMaintenanceException::class)
+    fun `throws on actual maintenance page`() = runTest {
+        server.enqueue(html(Fixtures.read("maintenance_actual.html")))
+        scraper.open(scraper.newSession())
+    }
 }
