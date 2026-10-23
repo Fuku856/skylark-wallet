@@ -112,6 +112,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.zxing.core)
     implementation(libs.tink.android)
+    implementation(libs.mlkit.text.recognition)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

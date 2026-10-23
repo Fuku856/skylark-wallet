@@ -22,6 +22,7 @@ jsoup = "1.23.2"
 zxing = "3.5.4"
 tink = "1.24.0"
 junit = "4.13.2"
+mlkitTextRecognition = "16.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -59,6 +60,7 @@ jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 tink-android = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

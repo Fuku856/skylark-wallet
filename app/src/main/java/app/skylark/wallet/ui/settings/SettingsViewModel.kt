@@ -25,6 +25,7 @@ class SettingsViewModel @Inject constructor(
     fun setAutoBrightness(enabled: Boolean) = launch { repository.setAutoBrightness(enabled) }
     fun setExpiryNotification(enabled: Boolean) = launch { repository.setExpiryNotification(enabled) }
     fun setThemeMode(mode: ThemeMode) = launch { repository.setThemeMode(mode) }
+    fun setAutoCaptcha(enabled: Boolean) = launch { repository.setAutoCaptcha(enabled) }
 
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }

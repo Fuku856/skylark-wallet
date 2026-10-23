@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -55,10 +57,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -75,6 +81,7 @@ import app.skylark.wallet.domain.model.MemoNormalizer
 import app.skylark.wallet.domain.model.Voucher
 import app.skylark.wallet.ui.common.Format
 import app.skylark.wallet.ui.lock.BiometricAuth
+import app.skylark.wallet.ui.settings.SecretSettingsDialog
 import kotlinx.coroutines.launch
 
 @Composable
@@ -84,6 +91,8 @@ fun HomeScreen(
     onRefreshAll: () -> Unit,
     onOpenBarcode: (voucherId: String?) -> Unit,
     onOpenSettings: () -> Unit,
+    autoCaptchaEnabled: Boolean,
+    onToggleAutoCaptcha: (Boolean) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -91,6 +100,8 @@ fun HomeScreen(
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingUnreadable by rememberSaveable { mutableStateOf(false) }
+    var showSecretSettings by rememberSaveable { mutableStateOf(false) }
+    val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val resources = LocalResources.current
     // MainActivity は FragmentActivity なので必ずキャストできる
@@ -120,7 +131,22 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = onOpenSettings) {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clip(CircleShape)
+                            // 長押しで裏設定を開く（IconButton は長押しを受けられないため自前で作る）
+                            .combinedClickable(
+                                role = Role.Button,
+                                onClick = onOpenSettings,
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    showSecretSettings = true
+                                },
+                            )
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
@@ -182,6 +208,14 @@ fun HomeScreen(
                 HorizontalFloatingToolbar(expanded = true, modifier = toolbarModifier, content = toolbarContent)
             }
         }
+    }
+
+    if (showSecretSettings) {
+        SecretSettingsDialog(
+            autoCaptchaEnabled = autoCaptchaEnabled,
+            onToggleAutoCaptcha = onToggleAutoCaptcha,
+            onDismiss = { showSecretSettings = false },
+        )
     }
 
     if (showAdd) {

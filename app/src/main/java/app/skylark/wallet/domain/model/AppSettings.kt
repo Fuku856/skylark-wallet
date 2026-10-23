@@ -9,6 +9,7 @@ data class AppSettings(
     val autoBrightness: Boolean = true,
     val expiryNotification: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val autoCaptcha: Boolean = false,
 )
 
 /** 画面の明暗。SYSTEM は端末の設定に従う。 */

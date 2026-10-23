@@ -32,6 +32,7 @@ import app.skylark.wallet.R
 import app.skylark.wallet.domain.model.AppSettings
 import app.skylark.wallet.ui.barcode.BarcodeScreen
 import app.skylark.wallet.ui.barcode.BarcodeViewModel
+import app.skylark.wallet.ui.captcha.AutoCaptchaFailedDialog
 import app.skylark.wallet.ui.captcha.CaptchaSheet
 import app.skylark.wallet.ui.captcha.RefreshViewModel
 import app.skylark.wallet.ui.common.Format
@@ -168,12 +169,15 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
             TermsWebViewScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.HOME) {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
             HomeScreen(
                 snackbarHostState = snackbarHostState,
                 onRefreshOne = { refreshViewModel.refreshOne(it) },
                 onRefreshAll = refreshViewModel::refreshAll,
                 onOpenBarcode = { navController.navigate(Routes.barcode(it)) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                autoCaptchaEnabled = settings.autoCaptcha,
+                onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
             )
         }
         composable(
@@ -207,12 +211,22 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     }
 
     (refreshState as? RefreshViewModel.UiState.Active)?.let { active ->
-        CaptchaSheet(
-            state = active,
-            onSubmit = refreshViewModel::submit,
-            onChangeImage = refreshViewModel::changeCaptcha,
-            onSkip = refreshViewModel::skip,
-            onCancel = refreshViewModel::cancel,
-        )
+        if (active.phase is RefreshViewModel.Phase.AutoCaptchaLimitReached) {
+            AutoCaptchaFailedDialog(
+                canSkip = active.progress != null,
+                onRetry = refreshViewModel::retryAutoCaptcha,
+                onManual = refreshViewModel::fallbackToManual,
+                onSkip = refreshViewModel::skip,
+                onCancel = refreshViewModel::cancel,
+            )
+        } else {
+            CaptchaSheet(
+                state = active,
+                onSubmit = refreshViewModel::submit,
+                onChangeImage = refreshViewModel::changeCaptcha,
+                onSkip = refreshViewModel::skip,
+                onCancel = refreshViewModel::cancel,
+            )
+        }
     }
 }
