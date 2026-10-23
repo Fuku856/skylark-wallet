@@ -133,6 +133,7 @@ private fun CaptchaContent(
                 targetState = when (phase) {
                     is RefreshViewModel.Phase.AwaitingCaptcha -> phase.image
                     is RefreshViewModel.Phase.Submitting -> phase.image
+                    is RefreshViewModel.Phase.AutoCaptchaLimitReached -> phase.lastImage
                     RefreshViewModel.Phase.Loading -> null
                 },
                 transitionSpec = { fadeIn(effects) togetherWith fadeOut(effects) },

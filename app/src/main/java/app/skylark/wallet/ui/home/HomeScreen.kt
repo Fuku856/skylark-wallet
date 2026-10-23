@@ -8,6 +8,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import app.skylark.wallet.ui.settings.SecretSettingsDialog
+import app.skylark.wallet.ui.settings.SettingsViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -91,6 +98,10 @@ fun HomeScreen(
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var deletingUnreadable by rememberSaveable { mutableStateOf(false) }
+    var showSecretSettings by rememberSaveable { mutableStateOf(false) }
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val appSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
+    val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val resources = LocalResources.current
     // MainActivity は FragmentActivity なので必ずキャストできる
@@ -120,7 +131,20 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = onOpenSettings) {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clip(CircleShape)
+                            .combinedClickable(
+                                onClick = onOpenSettings,
+                                onLongClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    showSecretSettings = true
+                                },
+                            )
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
                 },
@@ -182,6 +206,14 @@ fun HomeScreen(
                 HorizontalFloatingToolbar(expanded = true, modifier = toolbarModifier, content = toolbarContent)
             }
         }
+    }
+
+    if (showSecretSettings) {
+        SecretSettingsDialog(
+            autoCaptchaEnabled = appSettings?.autoCaptcha ?: false,
+            onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
+            onDismiss = { showSecretSettings = false },
+        )
     }
 
     if (showAdd) {

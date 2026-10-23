@@ -172,4 +172,11 @@
     <string name="notification_channel_expiry">有効期限のお知らせ</string>
     <string name="notification_expiry_title">優待券の有効期限まであと%1$d日です</string>
     <string name="notification_expiry_text">%1$s（残高 %2$s）</string>
+    <!-- 自動CAPTCHA & 裏設定 -->
+    <string name="secret_settings_title">詳細設定（試験的機能）</string>
+    <string name="secret_settings_auto_captcha_title">CAPTCHAを自動で入力</string>
+    <string name="secret_settings_auto_captcha_description">優待券照会時のCAPTCHA画像を端末内で自動認識します。デフォルトはOFF（自分で解く）です。</string>
+    <string name="auto_captcha_failed_title">自動認証に失敗しました</string>
+    <string name="auto_captcha_failed_message">CAPTCHAの自動認識が3回連続で失敗しました。画像を変えて再試行しますか？それとも手動で入力しますか？</string>
+    <string name="auto_captcha_manual_input">手動で入力</string>
 </resources>

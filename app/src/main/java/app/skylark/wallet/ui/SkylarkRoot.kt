@@ -32,6 +32,7 @@ import app.skylark.wallet.R
 import app.skylark.wallet.domain.model.AppSettings
 import app.skylark.wallet.ui.barcode.BarcodeScreen
 import app.skylark.wallet.ui.barcode.BarcodeViewModel
+import app.skylark.wallet.ui.captcha.AutoCaptchaFailedDialog
 import app.skylark.wallet.ui.captcha.CaptchaSheet
 import app.skylark.wallet.ui.captcha.RefreshViewModel
 import app.skylark.wallet.ui.common.Format
@@ -207,12 +208,45 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     }
 
     (refreshState as? RefreshViewModel.UiState.Active)?.let { active ->
-        CaptchaSheet(
-            state = active,
-            onSubmit = refreshViewModel::submit,
-            onChangeImage = refreshViewModel::changeCaptcha,
-            onSkip = refreshViewModel::skip,
-            onCancel = refreshViewModel::cancel,
-        )
+        when (active.phase) {
+            is RefreshViewModel.Phase.AutoCaptchaLimitReached -> {
+                AutoCaptchaFailedDialog(
+                    onRetry = refreshViewModel::retryAutoCaptcha,
+                    onManual = refreshViewModel::fallbackToManual,
+                    onCancel = refreshViewModel::cancel,
+                )
+            }
+            is RefreshViewModel.Phase.AwaitingCaptcha -> {
+                CaptchaSheet(
+                    state = active,
+                    onSubmit = refreshViewModel::submit,
+                    onChangeImage = refreshViewModel::changeCaptcha,
+                    onSkip = refreshViewModel::skip,
+                    onCancel = refreshViewModel::cancel,
+                )
+            }
+            is RefreshViewModel.Phase.Submitting -> {
+                if (!settings.autoCaptcha) {
+                    CaptchaSheet(
+                        state = active,
+                        onSubmit = refreshViewModel::submit,
+                        onChangeImage = refreshViewModel::changeCaptcha,
+                        onSkip = refreshViewModel::skip,
+                        onCancel = refreshViewModel::cancel,
+                    )
+                }
+            }
+            RefreshViewModel.Phase.Loading -> {
+                if (!settings.autoCaptcha) {
+                    CaptchaSheet(
+                        state = active,
+                        onSubmit = refreshViewModel::submit,
+                        onChangeImage = refreshViewModel::changeCaptcha,
+                        onSkip = refreshViewModel::skip,
+                        onCancel = refreshViewModel::cancel,
+                    )
+                }
+            }
+        }
     }
 }
