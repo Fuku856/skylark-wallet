@@ -15,12 +15,15 @@ jobs:
   release-notes:
     runs-on: ubuntu-latest
     steps:
-      # 比較元のタグが今回のタグの履歴に含まれるかを git で調べるため、全履歴とタグを取得する
+      # 比較元のタグが今回のタグの履歴に含まれるかを git で調べるため、全履歴とタグを取得する。
+      # 必要なのはコミットの親子関係だけなので、過去のファイル内容は取らず、トークンも残さない。
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ github.event.release.tag_name }}
           fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
 
       - name: Generate and overwrite release notes
         env:
