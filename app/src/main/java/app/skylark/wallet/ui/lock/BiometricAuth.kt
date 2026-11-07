@@ -6,6 +6,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
+import app.skylark.wallet.diagnostics.DebugLog
 
 /** 生体認証または端末の PIN・パターン（API 28 以降で使える組み合わせ）。 */
 const val LOCK_AUTHENTICATORS =
@@ -46,6 +47,7 @@ object BiometricAuth {
             ContextCompat.getMainExecutor(activity),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    DebugLog.log("lock", "authentication succeeded")
                     lock.authenticating = false
                     // 本人と確かめられたので、認証の途中でかかった起動時のロックも解除する
                     lock.unlocked = true
@@ -53,6 +55,7 @@ object BiometricAuth {
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    DebugLog.log("lock", "authentication error code=$errorCode")
                     lock.authenticating = false
                     onError(errorCode, errString)
                 }

@@ -177,8 +177,8 @@
     <string name="secret_settings_title">詳細設定（試験的機能）</string>
     <string name="secret_settings_auto_captcha_title">CAPTCHAを自動で入力</string>
     <string name="secret_settings_auto_captcha_description">優待券照会時のCAPTCHA画像を端末内で自動認識します。デフォルトはOFF（自分で解く）です。</string>
-    <string name="secret_settings_debug_log_title">照会の診断ログを出力</string>
-    <string name="secret_settings_debug_log_description">照会の進み具合と失敗した段階を端末のログ（logcat）に出力します。ご優待番号や画像の番号は出力しません。デフォルトはOFFです。</string>
+    <string name="secret_settings_debug_log_title">デバッグログを出力</string>
+    <string name="secret_settings_debug_log_description">アプリの動作と失敗した段階を端末のログ（logcat）に出力します。ご優待番号や画像の番号は出力しません。デフォルトはOFFです。</string>
     <string name="auto_captcha_failed_title">自動認証に失敗しました</string>
     <string name="auto_captcha_failed_message">CAPTCHAの自動認識が%1$d回連続で失敗しました。画像を変えて再試行しますか？それとも手動で入力しますか？</string>
     <string name="auto_captcha_manual_input">手動で入力</string>

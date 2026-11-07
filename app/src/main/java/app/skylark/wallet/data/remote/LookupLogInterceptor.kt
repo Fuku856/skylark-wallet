@@ -1,36 +1,16 @@
 package app.skylark.wallet.data.remote
 
-import android.util.Log
+import app.skylark.wallet.diagnostics.DebugLog
+import java.io.IOException
 import okhttp3.Interceptor
 import okhttp3.Response
-import java.io.IOException
 
 /**
- * 照会の診断ログ。裏設定で ON にしたときだけ logcat（タグ [TAG]）に出す。
- *
- * ご優待番号・バーコード番号・画像の番号・OCR の認識結果・Cookie の値・HTML は渡さないこと。
- * 念のため、長い数字列はここでも伏せる。
- */
-object LookupDebugLog {
-    const val TAG = "SkylarkLookup"
-    private val LONG_DIGITS = Regex("\\d{9,}")
-
-    @Volatile
-    var enabled = false
-
-    fun log(message: String) {
-        if (enabled) Log.i(TAG, sanitize(message))
-    }
-
-    fun sanitize(message: String): String = message.replace(LONG_DIGITS, "***")
-}
-
-/**
- * 通信の結果を診断ログに出す。リダイレクトも見えるよう、ネットワークインターセプタとして使う。
+ * 通信の結果をデバッグログに出す。リダイレクトも見えるよう、ネットワークインターセプタとして使う。
  * クエリには番号が入ることがあるので、パスだけを出す。Cookie は名前だけを出す。
  */
 class LookupLogInterceptor(
-    private val log: (String) -> Unit = LookupDebugLog::log,
+    private val log: (String) -> Unit = { DebugLog.log("net", it) },
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {

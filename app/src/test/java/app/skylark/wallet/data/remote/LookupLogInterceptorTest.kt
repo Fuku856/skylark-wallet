@@ -1,5 +1,6 @@
 package app.skylark.wallet.data.remote
 
+import app.skylark.wallet.diagnostics.DebugLog
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
@@ -61,6 +62,6 @@ class LookupLogInterceptorTest {
 
     @Test
     fun `sanitize masks long digit runs only`() {
-        assertEquals("code *** ok 12345", LookupDebugLog.sanitize("code 6674577439187 ok 12345"))
+        assertEquals("code *** ok 12345", DebugLog.sanitize("code 6674577439187 ok 12345"))
     }
 }

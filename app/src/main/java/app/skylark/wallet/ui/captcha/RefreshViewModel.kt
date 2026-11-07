@@ -10,9 +10,9 @@ import app.skylark.wallet.R
 import app.skylark.wallet.data.captcha.CaptchaPreprocessor
 import app.skylark.wallet.data.captcha.CaptchaSolver
 import app.skylark.wallet.data.local.prefs.SettingsRepository
-import app.skylark.wallet.data.remote.LookupDebugLog
 import app.skylark.wallet.data.remote.SiteMaintenanceException
 import app.skylark.wallet.data.remote.UnexpectedPageException
+import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.LookupOutcome
 import app.skylark.wallet.domain.model.Voucher
 import app.skylark.wallet.domain.repository.LookupSession
@@ -20,6 +20,8 @@ import app.skylark.wallet.domain.repository.VoucherRepository
 import app.skylark.wallet.domain.usecase.StartRefreshUseCase
 import app.skylark.wallet.domain.usecase.SubmitCaptchaUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
+import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,8 +33,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
-import javax.inject.Inject
 
 /**
  * 照会（CAPTCHA 手入力）の状態を管理する。Activity スコープで共有し、ホーム・バーコード画面のどちらからでも使う。
@@ -163,8 +163,7 @@ class RefreshViewModel @Inject constructor(
         }
         retryPoint = null
         autoCaptcha = settings.autoCaptcha
-        LookupDebugLog.enabled = settings.debugLog
-        LookupDebugLog.log("start targets=${newQueue.size} auto=$autoCaptcha")
+        DebugLog.log("lookup", "start targets=${newQueue.size} auto=$autoCaptcha")
         job?.cancel()
         mode = newMode
         queue = newQueue
@@ -241,7 +240,7 @@ class RefreshViewModel @Inject constructor(
             try {
                 when (val outcome = submitCaptcha(current, target, captcha)) {
                     is LookupOutcome.Success -> {
-                        LookupDebugLog.log("submit auto=$isAuto outcome=success")
+                        DebugLog.log("lookup", "submit auto=$isAuto outcome=success")
                         succeeded++
                         // 一括更新では最後にまとめて知らせる
                         if (mode != Mode.Batch) _events.send(Event.Updated(target, outcome.result.balance))
@@ -252,7 +251,7 @@ class RefreshViewModel @Inject constructor(
                     }
                     is LookupOutcome.CaptchaMismatch -> {
                         // 想定外のエラー文言もここに来るので、切り分けのためサイトの文言を残す
-                        LookupDebugLog.log("submit auto=$isAuto outcome=mismatch message=${outcome.message}")
+                        DebugLog.log("lookup", "submit auto=$isAuto outcome=mismatch message=${outcome.message}")
                         if (isAuto) {
                             handleAutoCaptchaFailure(current)
                         } else {
@@ -260,17 +259,17 @@ class RefreshViewModel @Inject constructor(
                         }
                     }
                     is LookupOutcome.InvalidCode -> {
-                        LookupDebugLog.log("submit auto=$isAuto outcome=invalid_code")
+                        DebugLog.log("lookup", "submit auto=$isAuto outcome=invalid_code")
                         _events.send(Event.Failed(R.string.error_invalid_code, outcome.message))
                         if (mode == Mode.Batch) next() else finish()
                     }
                     LookupOutcome.Maintenance -> {
-                        LookupDebugLog.log("submit auto=$isAuto outcome=maintenance")
+                        DebugLog.log("lookup", "submit auto=$isAuto outcome=maintenance")
                         _events.send(Event.Failed(R.string.error_maintenance, batchProgress = batchProgress()))
                         finish()
                     }
                     LookupOutcome.ParseFailure -> {
-                        LookupDebugLog.log("submit auto=$isAuto outcome=parse_failure")
+                        DebugLog.log("lookup", "submit auto=$isAuto outcome=parse_failure")
                         _events.send(Event.Failed(R.string.error_parse, batchProgress = batchProgress()))
                         finish()
                     }
@@ -291,11 +290,12 @@ class RefreshViewModel @Inject constructor(
         _state.value = active.copy(phase = Phase.Submitting(image))
         when (val solveResult = captchaSolver.solve(bytes)) {
             is CaptchaSolver.SolveResult.Success -> {
-                LookupDebugLog.log("solve attempt=${autoFailures + 1} result=digits")
+                DebugLog.log("lookup", "solve attempt=${autoFailures + 1} result=digits")
                 executeSubmit(currentSession, target, solveResult.digits, image, isAuto = true)
             }
             is CaptchaSolver.SolveResult.Failure -> {
-                LookupDebugLog.log(
+                DebugLog.log(
+                    "lookup",
                     "solve attempt=${autoFailures + 1} result=${solveResult.kind} detail=${solveResult.detail}",
                 )
                 handleAutoCaptchaFailure(currentSession)
@@ -308,7 +308,7 @@ class RefreshViewModel @Inject constructor(
         val active = _state.value as? UiState.Active ?: return
         autoFailures++
         if (autoFailures >= MAX_AUTO_ATTEMPTS) {
-            LookupDebugLog.log("auto limit reached attempts=$autoFailures")
+            DebugLog.log("lookup", "auto limit reached attempts=$autoFailures")
             _state.value = active.copy(phase = Phase.AutoCaptchaLimitReached)
             return
         }
@@ -389,7 +389,7 @@ class RefreshViewModel @Inject constructor(
         if (mode == Mode.Batch && succeeded > 0) Event.BatchFinished(succeeded, queue.size) else null
 
     private suspend fun fail(e: Exception) {
-        LookupDebugLog.log("failed ${e.javaClass.name}: ${e.message}")
+        DebugLog.error("lookup", "failed", e)
         val progress = batchProgress()
         val event = when (e) {
             is SiteMaintenanceException -> Event.Failed(R.string.error_maintenance, batchProgress = progress)
