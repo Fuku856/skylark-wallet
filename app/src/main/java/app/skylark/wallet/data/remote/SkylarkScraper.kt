@@ -35,7 +35,7 @@ class SkylarkScraper(
 
     fun newSession(): SkylarkSession = SkylarkSession(baseClient)
 
-    /** GET /input でセッション Cookie を受け取り、フォームを読み取る。 */
+    /** GET /input で CSRF の Cookie を受け取り、フォームを読み取る。ci_session は画像の応答で発行される。 */
     suspend fun open(session: SkylarkSession): InputForm = withContext(Dispatchers.IO) {
         val url = endpoint.inputUrl
         val html = session.client.newCall(Request.Builder().url(url).get().build()).execute().use { it.bodyOrThrow() }
