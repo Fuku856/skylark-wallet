@@ -4,6 +4,7 @@ import android.util.Log
 import app.skylark.wallet.data.local.crypto.StringCipher
 import app.skylark.wallet.data.local.db.VoucherDao
 import app.skylark.wallet.data.local.db.VoucherEntity
+import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.CodeNormalizer
 import app.skylark.wallet.domain.model.Ean13
 import app.skylark.wallet.domain.model.ImportSummary
@@ -12,15 +13,15 @@ import app.skylark.wallet.domain.model.Voucher
 import app.skylark.wallet.domain.model.VoucherBackup
 import app.skylark.wallet.domain.model.VoucherResult
 import app.skylark.wallet.domain.repository.VoucherRepository
+import java.security.GeneralSecurityException
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.security.GeneralSecurityException
-import java.util.UUID
-import javax.inject.Inject
-import javax.inject.Singleton
 
 @Singleton
 class VoucherRepositoryImpl @Inject constructor(
@@ -50,6 +51,7 @@ class VoucherRepositoryImpl @Inject constructor(
             createdAt = System.currentTimeMillis(),
         )
         dao.insert(entity)
+        DebugLog.log("voucher", "add id=$id")
         entity.toDomain() ?: error("failed to decrypt new voucher")
     }
 
@@ -66,9 +68,13 @@ class VoucherRepositoryImpl @Inject constructor(
                 lastError = null,
             ),
         )
+        DebugLog.log("voucher", "saveResult id=$id")
     }
 
-    override suspend fun markError(id: String, message: String) = dao.updateError(id, message)
+    override suspend fun markError(id: String, message: String) {
+        DebugLog.log("voucher", "markError id=$id")
+        dao.updateError(id, message)
+    }
 
     override suspend fun updateMemo(id: String, memo: String) = dao.updateMemo(id, MemoNormalizer.normalize(memo))
 
@@ -77,13 +83,18 @@ class VoucherRepositoryImpl @Inject constructor(
         entity.encryptedResultHtml?.let { decryptOrNull(it, id) }
     }
 
-    override suspend fun delete(id: String) = dao.delete(id)
+    override suspend fun delete(id: String) {
+        DebugLog.log("voucher", "delete id=$id")
+        dao.delete(id)
+    }
 
     override fun observeUnreadableCount(): Flow<Int> =
         dao.observeAll().map { list -> list.count { !it.isReadable() } }.flowOn(Dispatchers.Default)
 
     override suspend fun deleteUnreadable() = withContext(Dispatchers.Default) {
-        dao.getAll().filterNot { it.isReadable() }.forEach { dao.delete(it.id) }
+        val unreadable = dao.getAll().filterNot { it.isReadable() }
+        unreadable.forEach { dao.delete(it.id) }
+        DebugLog.log("voucher", "deleteUnreadable count=${unreadable.size}")
     }
 
     override suspend fun exportBackup(): List<VoucherBackup> = withContext(Dispatchers.Default) {
@@ -122,6 +133,7 @@ class VoucherRepositoryImpl @Inject constructor(
         }
         // 1トランザクションで入れる（途中で失敗しても一部だけ入った状態にしない）
         dao.insertAll(added)
+        DebugLog.log("voucher", "import added=${added.size} duplicate=$duplicate invalid=$invalid")
         ImportSummary(added = added.size, skippedDuplicate = duplicate, skippedInvalid = invalid)
     }
 

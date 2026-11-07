@@ -24,7 +24,7 @@ class MlKitCaptchaSolver @Inject constructor() : CaptchaSolver {
         withContext(Dispatchers.Default) {
             try {
                 val originalBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                    ?: return@withContext CaptchaSolver.SolveResult.Failure("Bitmap decode failed")
+                    ?: return@withContext CaptchaSolver.SolveResult.Failure(CaptchaSolver.FailureKind.ImageDecode)
 
                 // Otsuの二値化により純白背景・純黒文字に前処理
                 val binarizedBitmap = CaptchaPreprocessor.binarize(originalBitmap)
@@ -40,16 +40,20 @@ class MlKitCaptchaSolver @Inject constructor() : CaptchaSolver {
                         }
                 }
 
-                val normalized = CaptchaPreprocessor.normalizeText(visionText.text)
+                val rawText = visionText.text
+                val normalized = CaptchaPreprocessor.normalizeText(rawText)
                 if (normalized != null) {
-                    CaptchaSolver.SolveResult.Success(normalized)
+                    CaptchaSolver.SolveResult.Success(digits = normalized, rawText = rawText)
                 } else {
-                    CaptchaSolver.SolveResult.Failure("Unmatched digits from text: '${visionText.text}'")
+                    CaptchaSolver.SolveResult.Failure(
+                        kind = CaptchaSolver.FailureKind.NotDigits,
+                        rawText = rawText,
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                CaptchaSolver.SolveResult.Failure(e.message)
+                CaptchaSolver.SolveResult.Failure(CaptchaSolver.FailureKind.Engine, e.javaClass.name)
             }
         }
 }

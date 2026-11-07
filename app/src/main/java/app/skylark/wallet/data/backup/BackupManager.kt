@@ -2,16 +2,17 @@ package app.skylark.wallet.data.backup
 
 import android.content.Context
 import android.net.Uri
+import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.ImportSummary
 import app.skylark.wallet.domain.repository.VoucherRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
 import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 端末移行用のバックアップファイルを書き出す・読み込む。
@@ -25,7 +26,7 @@ class BackupManager @Inject constructor(
     data class ExportResult(val password: String, val count: Int)
 
     /** 券を新しいパスワードで暗号化して [uri] に書き出す。パスワードは呼び出し側で利用者に表示する。 */
-    suspend fun export(uri: Uri): ExportResult {
+    suspend fun export(uri: Uri): ExportResult = logged("export") {
         val vouchers = repository.exportBackup()
         val password = BackupPassword.generate()
         val file = withContext(Dispatchers.Default) {
@@ -36,11 +37,11 @@ class BackupManager @Inject constructor(
             val out = context.contentResolver.openOutputStream(uri, "wt") ?: throw FileNotFoundException()
             out.use { it.write(file) }
         }
-        return ExportResult(password, vouchers.size)
+        ExportResult(password, vouchers.size)
     }
 
     /** [uri] のバックアップを [password] で復号し、登録済みでない券を追加する。 */
-    suspend fun import(uri: Uri, password: String): ImportSummary {
+    suspend fun import(uri: Uri, password: String): ImportSummary = logged("import") {
         val file = withContext(Dispatchers.IO) {
             val input = context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException()
             input.use { it.readLimited(MAX_FILE_SIZE) }
@@ -48,7 +49,16 @@ class BackupManager @Inject constructor(
         val vouchers = withContext(Dispatchers.Default) {
             BackupPayload.decode(BackupFormat.open(file, BackupPassword.normalize(password)))
         }
-        return repository.importBackup(vouchers)
+        repository.importBackup(vouchers)
+    }
+
+    /** 成否だけを記録する。結果にはパスワードが含まれるので出さない。 */
+    private inline fun <T> logged(action: String, block: () -> T): T = try {
+        block().also { DebugLog.log("backup", "$action ok") }
+    } catch (e: Exception) {
+        // 原因の例外のメッセージには、復号した JSON の一部が入ることがあるので、クラス名だけを出す
+        DebugLog.log("backup", "$action failed ${DebugLog.causeChain(e)}")
+        throw e
     }
 
     private fun InputStream.readLimited(maxSize: Int): ByteArray {

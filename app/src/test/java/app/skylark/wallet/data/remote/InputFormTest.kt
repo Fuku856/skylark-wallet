@@ -4,7 +4,6 @@ import app.skylark.wallet.testutil.Fixtures
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class InputFormTest {
@@ -20,7 +19,7 @@ class InputFormTest {
         assertEquals("captchakey", form.captchaFieldName)
         assertEquals("agree", form.agreeFieldName)
         assertEquals("1", form.agreeValue)
-        assertTrue(form.hiddenFields.isEmpty())
+        assertEquals(listOf("csrf_test_name" to "csrf-input-token"), form.hiddenFields)
         assertEquals("/input/captcha", form.captchaUrl.encodedPath)
     }
 
@@ -31,7 +30,7 @@ class InputFormTest {
 
         val form = InputForm.parse(html, pageUrl)!!
 
-        assertEquals(listOf("token" to "abc"), form.hiddenFields)
+        assertEquals(listOf("csrf_test_name" to "csrf-input-token", "token" to "abc"), form.hiddenFields)
     }
 
     @Test

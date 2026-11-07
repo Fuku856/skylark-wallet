@@ -17,7 +17,7 @@ data class InputForm(
     val captchaUrl: HttpUrl,
 ) {
     companion object {
-        // 2026-10 時点の https://www.skylarkyutaiken.com/input の実 DOM
+        // 2026-11 時点の https://www.skylarkyutaiken.com/input の実 DOM
         val DEFAULT_CODE_FIELDS = listOf("code[0]", "code[1]", "code[2]")
         const val DEFAULT_CAPTCHA_FIELD = "captchakey"
         const val DEFAULT_AGREE_FIELD = "agree"

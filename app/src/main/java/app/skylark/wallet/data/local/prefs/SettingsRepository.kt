@@ -32,6 +32,7 @@ class SettingsRepository @Inject constructor(
         val NOTIFIED_KEYS = stringSetPreferencesKey("notified_keys")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val AUTO_CAPTCHA = booleanPreferencesKey("auto_captcha")
+        val DEBUG_LOG = booleanPreferencesKey("debug_log")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -43,6 +44,7 @@ class SettingsRepository @Inject constructor(
             expiryNotification = prefs[Keys.EXPIRY_NOTIFICATION] ?: false,
             themeMode = ThemeMode.entries.firstOrNull { it.name == prefs[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM,
             autoCaptcha = prefs[Keys.AUTO_CAPTCHA] ?: false,
+            debugLog = prefs[Keys.DEBUG_LOG] ?: false,
         )
     }
 
@@ -63,6 +65,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
 
     suspend fun setAutoCaptcha(enabled: Boolean) = context.dataStore.edit { it[Keys.AUTO_CAPTCHA] = enabled }
+
+    suspend fun setDebugLog(enabled: Boolean) = context.dataStore.edit { it[Keys.DEBUG_LOG] = enabled }
 
     /** 期限通知を送ったかどうかの記録（同じ通知を重複して出さないため）。 */
     suspend fun notifiedKeys(): Set<String> = context.dataStore.data.first()[Keys.NOTIFIED_KEYS].orEmpty()

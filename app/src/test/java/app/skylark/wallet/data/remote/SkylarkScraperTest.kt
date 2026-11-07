@@ -37,9 +37,10 @@ class SkylarkScraperTest {
         .body(body)
         .build()
 
-    private fun png(bytes: ByteArray) = MockResponse.Builder()
+    private fun png(bytes: ByteArray, vararg headers: Pair<String, String>) = MockResponse.Builder()
         .code(200)
         .addHeader("Content-Type", "image/png")
+        .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
         .body(Buffer().write(bytes))
         .build()
 
@@ -70,7 +71,7 @@ class SkylarkScraperTest {
         assertEquals("/input", post.url.encodedPath)
         assertEquals("ci_session=abc", post.headers["Cookie"])
         assertEquals(
-            "code%5B0%5D=ABC&code%5B1%5D=123&code%5B2%5D=xyz&captchakey=5640&agree=1",
+            "csrf_test_name=csrf-input-token&code%5B0%5D=ABC&code%5B1%5D=123&code%5B2%5D=xyz&captchakey=5640&agree=1",
             post.body?.utf8(),
         )
     }
@@ -85,7 +86,45 @@ class SkylarkScraperTest {
         scraper.submit(session, "ABC123XYZ", "1234", termsAgreed = false)
 
         server.takeRequest()
-        assertEquals("code%5B0%5D=ABC&code%5B1%5D=123&code%5B2%5D=XYZ&captchakey=1234", server.takeRequest().body?.utf8())
+        assertEquals(
+            "csrf_test_name=csrf-input-token&code%5B0%5D=ABC&code%5B1%5D=123&code%5B2%5D=XYZ&captchakey=1234",
+            server.takeRequest().body?.utf8(),
+        )
+    }
+
+    @Test
+    fun `uses refreshed csrf token after captcha mismatch`() = runTest {
+        server.enqueue(html(Fixtures.read("input.html")))
+        server.enqueue(html(Fixtures.read("error_captcha.html")))
+        server.enqueue(html(Fixtures.read("result_sample.html")))
+
+        val session = scraper.newSession()
+        scraper.open(session)
+        scraper.submit(session, "ABC123XYZ", "1234", termsAgreed = true)
+        scraper.submit(session, "ABC123XYZ", "5678", termsAgreed = true)
+
+        server.takeRequest()
+        assertTrue(server.takeRequest().body!!.utf8().startsWith("csrf_test_name=csrf-input-token&"))
+        assertTrue(server.takeRequest().body!!.utf8().startsWith("csrf_test_name=csrf-retry-token&"))
+    }
+
+    @Test
+    fun `sends session cookie issued with captcha image`() = runTest {
+        // 現行サイトは GET /input で csrf_cookie_name を、画像の応答で ci_session（5分）を発行する
+        server.enqueue(html(Fixtures.read("input.html"), "Set-Cookie" to "csrf_cookie_name=token; Max-Age=7200; path=/"))
+        server.enqueue(png(byteArrayOf(1), "Set-Cookie" to "ci_session=abc; Max-Age=300; path=/; HttpOnly; SameSite=Lax"))
+        server.enqueue(html(Fixtures.read("result_sample.html")))
+
+        val session = scraper.newSession()
+        scraper.open(session)
+        scraper.fetchCaptcha(session)
+        scraper.submit(session, "ABC123XYZ", "5640", termsAgreed = true)
+
+        server.takeRequest()
+        assertEquals("csrf_cookie_name=token", server.takeRequest().headers["Cookie"])
+
+        val postCookies = server.takeRequest().headers["Cookie"].orEmpty().split("; ").toSet()
+        assertEquals(setOf("csrf_cookie_name=token", "ci_session=abc"), postCookies)
     }
 
     @Test
