@@ -56,7 +56,8 @@ class BackupManager @Inject constructor(
     private inline fun <T> logged(action: String, block: () -> T): T = try {
         block().also { DebugLog.log("backup", "$action ok") }
     } catch (e: Exception) {
-        DebugLog.error("backup", "$action failed", e)
+        // 原因の例外のメッセージには、復号した JSON の一部が入ることがあるので、クラス名だけを出す
+        DebugLog.log("backup", "$action failed ${DebugLog.causeChain(e)}")
         throw e
     }
 
