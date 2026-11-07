@@ -10,6 +10,7 @@ import app.skylark.wallet.R
 import app.skylark.wallet.data.captcha.CaptchaPreprocessor
 import app.skylark.wallet.data.captcha.CaptchaSolver
 import app.skylark.wallet.data.local.prefs.SettingsRepository
+import app.skylark.wallet.data.remote.LookupDebugLog
 import app.skylark.wallet.data.remote.SiteMaintenanceException
 import app.skylark.wallet.data.remote.UnexpectedPageException
 import app.skylark.wallet.domain.model.LookupOutcome
@@ -162,6 +163,8 @@ class RefreshViewModel @Inject constructor(
         }
         retryPoint = null
         autoCaptcha = settings.autoCaptcha
+        LookupDebugLog.enabled = settings.debugLog
+        LookupDebugLog.log("start targets=${newQueue.size} auto=$autoCaptcha")
         job?.cancel()
         mode = newMode
         queue = newQueue
@@ -238,6 +241,7 @@ class RefreshViewModel @Inject constructor(
             try {
                 when (val outcome = submitCaptcha(current, target, captcha)) {
                     is LookupOutcome.Success -> {
+                        LookupDebugLog.log("submit auto=$isAuto outcome=success")
                         succeeded++
                         // 一括更新では最後にまとめて知らせる
                         if (mode != Mode.Batch) _events.send(Event.Updated(target, outcome.result.balance))
@@ -247,6 +251,8 @@ class RefreshViewModel @Inject constructor(
                         next()
                     }
                     is LookupOutcome.CaptchaMismatch -> {
+                        // 想定外のエラー文言もここに来るので、切り分けのためサイトの文言を残す
+                        LookupDebugLog.log("submit auto=$isAuto outcome=mismatch message=${outcome.message}")
                         if (isAuto) {
                             handleAutoCaptchaFailure(current)
                         } else {
@@ -254,14 +260,17 @@ class RefreshViewModel @Inject constructor(
                         }
                     }
                     is LookupOutcome.InvalidCode -> {
+                        LookupDebugLog.log("submit auto=$isAuto outcome=invalid_code")
                         _events.send(Event.Failed(R.string.error_invalid_code, outcome.message))
                         if (mode == Mode.Batch) next() else finish()
                     }
                     LookupOutcome.Maintenance -> {
+                        LookupDebugLog.log("submit auto=$isAuto outcome=maintenance")
                         _events.send(Event.Failed(R.string.error_maintenance, batchProgress = batchProgress()))
                         finish()
                     }
                     LookupOutcome.ParseFailure -> {
+                        LookupDebugLog.log("submit auto=$isAuto outcome=parse_failure")
                         _events.send(Event.Failed(R.string.error_parse, batchProgress = batchProgress()))
                         finish()
                     }
@@ -281,9 +290,16 @@ class RefreshViewModel @Inject constructor(
         // 読み取り中も画像は見せるが、入力はさせない
         _state.value = active.copy(phase = Phase.Submitting(image))
         when (val solveResult = captchaSolver.solve(bytes)) {
-            is CaptchaSolver.SolveResult.Success ->
+            is CaptchaSolver.SolveResult.Success -> {
+                LookupDebugLog.log("solve attempt=${autoFailures + 1} result=digits")
                 executeSubmit(currentSession, target, solveResult.digits, image, isAuto = true)
-            is CaptchaSolver.SolveResult.Failure -> handleAutoCaptchaFailure(currentSession)
+            }
+            is CaptchaSolver.SolveResult.Failure -> {
+                LookupDebugLog.log(
+                    "solve attempt=${autoFailures + 1} result=${solveResult.kind} detail=${solveResult.detail}",
+                )
+                handleAutoCaptchaFailure(currentSession)
+            }
         }
     }
 
@@ -292,6 +308,7 @@ class RefreshViewModel @Inject constructor(
         val active = _state.value as? UiState.Active ?: return
         autoFailures++
         if (autoFailures >= MAX_AUTO_ATTEMPTS) {
+            LookupDebugLog.log("auto limit reached attempts=$autoFailures")
             _state.value = active.copy(phase = Phase.AutoCaptchaLimitReached)
             return
         }
@@ -372,6 +389,7 @@ class RefreshViewModel @Inject constructor(
         if (mode == Mode.Batch && succeeded > 0) Event.BatchFinished(succeeded, queue.size) else null
 
     private suspend fun fail(e: Exception) {
+        LookupDebugLog.log("failed ${e.javaClass.name}: ${e.message}")
         val progress = batchProgress()
         val event = when (e) {
             is SiteMaintenanceException -> Event.Failed(R.string.error_maintenance, batchProgress = progress)

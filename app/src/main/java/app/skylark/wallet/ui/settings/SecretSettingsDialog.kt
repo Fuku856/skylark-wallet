@@ -30,6 +30,8 @@ import app.skylark.wallet.R
 fun SecretSettingsDialog(
     autoCaptchaEnabled: Boolean,
     onToggleAutoCaptcha: (Boolean) -> Unit,
+    debugLogEnabled: Boolean,
+    onToggleDebugLog: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -49,30 +51,18 @@ fun SecretSettingsDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onToggleAutoCaptcha(!autoCaptchaEnabled) },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.secret_settings_auto_captcha_title),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.secret_settings_auto_captcha_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Switch(
-                        checked = autoCaptchaEnabled,
-                        onCheckedChange = onToggleAutoCaptcha,
-                    )
-                }
+                SecretSwitchRow(
+                    title = stringResource(R.string.secret_settings_auto_captcha_title),
+                    description = stringResource(R.string.secret_settings_auto_captcha_description),
+                    checked = autoCaptchaEnabled,
+                    onCheckedChange = onToggleAutoCaptcha,
+                )
+                SecretSwitchRow(
+                    title = stringResource(R.string.secret_settings_debug_log_title),
+                    description = stringResource(R.string.secret_settings_debug_log_description),
+                    checked = debugLogEnabled,
+                    onCheckedChange = onToggleDebugLog,
+                )
             }
         },
         confirmButton = {
@@ -81,4 +71,31 @@ fun SecretSettingsDialog(
             }
         },
     )
+}
+
+@Composable
+private fun SecretSwitchRow(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
 }

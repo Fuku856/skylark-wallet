@@ -2,9 +2,10 @@
 
 すかいらーくご優待券の **9桁のご優待番号** を登録すると、残高・有効期限・13桁のバーコード番号を取得して、端末内に暗号化して保存する Android アプリです。
 
-- 入力するのは、9桁のコード（登録時のみ）と画像認証（CAPTCHA）の数字だけです。CAPTCHA は人が読んで入力します（OCR などで自動解読はしません）。
+- 入力するのは、9桁のコード（登録時のみ）と画像認証（CAPTCHA）の数字だけです。CAPTCHA は既定では人が読んで入力します。裏設定に端末内の文字認識（ML Kit）で入力するモードがありますが、既定は OFF です。
 - 外部サーバー・有料 API は使いません。通信・解析・暗号化保存はすべて端末内で行います。
 - サイトへのアクセスは、照会の操作をしたときだけ行います。バックグラウンドでの定期照会はしません（期限通知は保存済みの期限だけを見ます）。
+- 裏設定（ホームの設定アイコンを長押し）で、照会の診断ログを logcat（タグ `SkylarkLookup`）に出力できます。出力するのは通信のパス・状態コード・Cookie 名、失敗した段階、サイトの CAPTCHA エラー文言だけで、番号・OCR の結果・Cookie の値は出しません。既定は OFF です。
 - UI は Material 3 Expressive（`MaterialExpressiveTheme` / `MotionScheme.expressive()` / Floating Toolbar / Loading Indicator）です。
 
 ## 構成
@@ -22,7 +23,7 @@ app/src/main/java/app/skylark/wallet/
  └── ui/                    # home / captcha / barcode / webview / settings / onboarding / lock / theme
 ```
 
-## サイトの仕様（Phase 1 で確認した内容）
+## サイトの仕様（Phase 1 で確認し、2026-11-07 に再確認した内容）
 
 `GET https://www.skylarkyutaiken.com/input` の実 HTML（`app/src/test/resources/skylark/input.html`）から確認しました。
 
@@ -32,8 +33,8 @@ app/src/main/java/app/skylark/wallet/
 | ご優待番号 | `code[0]` / `code[1]` / `code[2]`（3文字ずつ） |
 | 画像の番号 | `captchakey` |
 | 規約同意 | `agree=1`（同意済みのときだけ送る） |
-| hidden / CSRF | なし（あれば自動で送る） |
-| CAPTCHA 画像 | `/input/captcha?<乱数>`。`ci_session` Cookie に紐づく。「画像交換」はクエリを変えて再取得するだけ |
+| hidden / CSRF | `csrf_test_name`（`csrf_cookie_name` Cookie と対応）。hidden はフォームから読み取って自動で送る |
+| CAPTCHA 画像 | `/input/captcha?<数値>`。`ci_session` Cookie に紐づき、この Cookie は画像の応答で発行される（有効期限5分）。「画像交換」はクエリを変えて再取得するだけ |
 
 結果画面・エラー画面は、POST に有効なコードと CAPTCHA の手入力が必要なため未取得です。`/css/public.css` の `body.inp` 向けスタイルから次の構造を推定し、`ResultParser` の先頭に定数としてまとめています。セレクタで取れない場合は、本文テキストの正規表現で読み取ります。
 

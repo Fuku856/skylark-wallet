@@ -178,6 +178,8 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 autoCaptchaEnabled = settings.autoCaptcha,
                 onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
+                debugLogEnabled = settings.debugLog,
+                onToggleDebugLog = settingsViewModel::setDebugLog,
             )
         }
         composable(

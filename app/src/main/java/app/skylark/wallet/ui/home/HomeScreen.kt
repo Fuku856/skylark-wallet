@@ -93,6 +93,8 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     autoCaptchaEnabled: Boolean,
     onToggleAutoCaptcha: (Boolean) -> Unit,
+    debugLogEnabled: Boolean,
+    onToggleDebugLog: (Boolean) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -214,6 +216,8 @@ fun HomeScreen(
         SecretSettingsDialog(
             autoCaptchaEnabled = autoCaptchaEnabled,
             onToggleAutoCaptcha = onToggleAutoCaptcha,
+            debugLogEnabled = debugLogEnabled,
+            onToggleDebugLog = onToggleDebugLog,
             onDismiss = { showSecretSettings = false },
         )
     }

@@ -10,6 +10,8 @@ data class AppSettings(
     val expiryNotification: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val autoCaptcha: Boolean = false,
+    /** 照会の診断ログを logcat に出すか。 */
+    val debugLog: Boolean = false,
 )
 
 /** 画面の明暗。SYSTEM は端末の設定に従う。 */

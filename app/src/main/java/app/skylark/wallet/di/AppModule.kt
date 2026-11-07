@@ -11,6 +11,7 @@ import app.skylark.wallet.data.local.crypto.CryptoManager
 import app.skylark.wallet.data.local.crypto.StringCipher
 import app.skylark.wallet.data.local.db.AppDatabase
 import app.skylark.wallet.data.local.db.VoucherDao
+import app.skylark.wallet.data.remote.LookupLogInterceptor
 import app.skylark.wallet.data.remote.SkylarkEndpoint
 import app.skylark.wallet.data.remote.SkylarkScraper
 import app.skylark.wallet.data.repository.SkylarkLookupRepository
@@ -53,6 +54,7 @@ object AppModule {
                     .build(),
             )
         }
+        .addNetworkInterceptor(LookupLogInterceptor())
         .apply {
             // デバッグビルドのみ。本文（9桁・13桁・HTML）は出さず、Cookie も伏せる。
             // バーコード画像の URL（/input/barcode?13桁）にも番号が入るため、URL 中の長い数字列も伏せる

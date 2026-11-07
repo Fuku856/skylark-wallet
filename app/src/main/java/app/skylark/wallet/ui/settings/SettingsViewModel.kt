@@ -27,6 +27,8 @@ class SettingsViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) = launch { repository.setThemeMode(mode) }
     fun setAutoCaptcha(enabled: Boolean) = launch { repository.setAutoCaptcha(enabled) }
 
+    fun setDebugLog(enabled: Boolean) = launch { repository.setDebugLog(enabled) }
+
     private fun launch(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
     }
