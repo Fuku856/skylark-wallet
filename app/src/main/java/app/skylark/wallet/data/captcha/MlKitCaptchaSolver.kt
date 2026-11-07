@@ -40,11 +40,15 @@ class MlKitCaptchaSolver @Inject constructor() : CaptchaSolver {
                         }
                 }
 
-                val normalized = CaptchaPreprocessor.normalizeText(visionText.text)
+                val rawText = visionText.text
+                val normalized = CaptchaPreprocessor.normalizeText(rawText)
                 if (normalized != null) {
-                    CaptchaSolver.SolveResult.Success(normalized)
+                    CaptchaSolver.SolveResult.Success(digits = normalized, rawText = rawText)
                 } else {
-                    CaptchaSolver.SolveResult.Failure(CaptchaSolver.FailureKind.NotDigits)
+                    CaptchaSolver.SolveResult.Failure(
+                        kind = CaptchaSolver.FailureKind.NotDigits,
+                        rawText = rawText,
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e

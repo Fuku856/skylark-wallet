@@ -7,10 +7,20 @@ interface CaptchaSolver {
     suspend fun solve(imageBytes: ByteArray): SolveResult
 
     sealed interface SolveResult {
-        data class Success(val digits: String) : SolveResult
+        /** OCR で読み取った生のテキスト（読み取り失敗や例外時は null）。 */
+        val rawText: String?
 
-        /** [detail] は例外のクラス名まで。OCR の認識結果は入れない（診断ログに出すため）。 */
-        data class Failure(val kind: FailureKind, val detail: String? = null) : SolveResult
+        data class Success(
+            val digits: String,
+            override val rawText: String? = digits,
+        ) : SolveResult
+
+        /** [detail] は例外のクラス名など。不具合調査のため [rawText] に OCR の認識結果を入れる。 */
+        data class Failure(
+            val kind: FailureKind,
+            val detail: String? = null,
+            override val rawText: String? = null,
+        ) : SolveResult
     }
 
     enum class FailureKind {

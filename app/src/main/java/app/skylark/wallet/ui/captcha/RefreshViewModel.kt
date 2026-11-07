@@ -238,9 +238,10 @@ class RefreshViewModel @Inject constructor(
         _state.value = active.copy(phase = Phase.Submitting(image))
         job = viewModelScope.launch {
             try {
+                DebugLog.log("lookup", "submit start captcha=$captcha auto=$isAuto")
                 when (val outcome = submitCaptcha(current, target, captcha)) {
                     is LookupOutcome.Success -> {
-                        DebugLog.log("lookup", "submit auto=$isAuto outcome=success")
+                        DebugLog.log("lookup", "submit captcha=$captcha auto=$isAuto outcome=success")
                         succeeded++
                         // 一括更新では最後にまとめて知らせる
                         if (mode != Mode.Batch) _events.send(Event.Updated(target, outcome.result.balance))
@@ -251,7 +252,10 @@ class RefreshViewModel @Inject constructor(
                     }
                     is LookupOutcome.CaptchaMismatch -> {
                         // 想定外のエラー文言もここに来るので、切り分けのためサイトの文言を残す
-                        DebugLog.log("lookup", "submit auto=$isAuto outcome=mismatch message=${outcome.message}")
+                        DebugLog.log(
+                            "lookup",
+                            "submit captcha=$captcha auto=$isAuto outcome=mismatch message=${outcome.message}",
+                        )
                         if (isAuto) {
                             handleAutoCaptchaFailure(current)
                         } else {
@@ -259,17 +263,17 @@ class RefreshViewModel @Inject constructor(
                         }
                     }
                     is LookupOutcome.InvalidCode -> {
-                        DebugLog.log("lookup", "submit auto=$isAuto outcome=invalid_code")
+                        DebugLog.log("lookup", "submit captcha=$captcha auto=$isAuto outcome=invalid_code")
                         _events.send(Event.Failed(R.string.error_invalid_code, outcome.message))
                         if (mode == Mode.Batch) next() else finish()
                     }
                     LookupOutcome.Maintenance -> {
-                        DebugLog.log("lookup", "submit auto=$isAuto outcome=maintenance")
+                        DebugLog.log("lookup", "submit captcha=$captcha auto=$isAuto outcome=maintenance")
                         _events.send(Event.Failed(R.string.error_maintenance, batchProgress = batchProgress()))
                         finish()
                     }
                     LookupOutcome.ParseFailure -> {
-                        DebugLog.log("lookup", "submit auto=$isAuto outcome=parse_failure")
+                        DebugLog.log("lookup", "submit captcha=$captcha auto=$isAuto outcome=parse_failure")
                         _events.send(Event.Failed(R.string.error_parse, batchProgress = batchProgress()))
                         finish()
                     }
@@ -288,15 +292,24 @@ class RefreshViewModel @Inject constructor(
         val active = _state.value as? UiState.Active ?: return
         // 読み取り中も画像は見せるが、入力はさせない
         _state.value = active.copy(phase = Phase.Submitting(image))
-        when (val solveResult = captchaSolver.solve(bytes)) {
+        val solveResult = captchaSolver.solve(bytes)
+        val raw = solveResult.rawText?.replace("\r", "")?.replace("\n", "\\n")
+        when (solveResult) {
             is CaptchaSolver.SolveResult.Success -> {
-                DebugLog.log("lookup", "solve attempt=${autoFailures + 1} result=digits")
+                DebugLog.log(
+                    "lookup",
+                    "solve attempt=${autoFailures + 1} result=digits digits=${solveResult.digits} ocr='$raw'",
+                )
                 executeSubmit(currentSession, target, solveResult.digits, image, isAuto = true)
             }
             is CaptchaSolver.SolveResult.Failure -> {
                 DebugLog.log(
                     "lookup",
-                    "solve attempt=${autoFailures + 1} result=${solveResult.kind} detail=${solveResult.detail}",
+                    buildString {
+                        append("solve attempt=${autoFailures + 1} result=${solveResult.kind}")
+                        if (solveResult.detail != null) append(" detail=${solveResult.detail}")
+                        if (raw != null) append(" ocr='$raw'")
+                    },
                 )
                 handleAutoCaptchaFailure(currentSession)
             }

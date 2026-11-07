@@ -64,4 +64,10 @@ class LookupLogInterceptorTest {
     fun `sanitize masks long digit runs only`() {
         assertEquals("code *** ok 12345", DebugLog.sanitize("code 6674577439187 ok 12345"))
     }
+
+    @Test
+    fun `sanitize keeps captcha and ocr text intact while masking code`() {
+        val log = "code 6674577439187 submit captcha=1234 ocr='I234' attempt=1"
+        assertEquals("code *** submit captcha=1234 ocr='I234' attempt=1", DebugLog.sanitize(log))
+    }
 }
