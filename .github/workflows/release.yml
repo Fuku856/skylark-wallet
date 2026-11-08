@@ -124,8 +124,11 @@ jobs:
               summary=$(printf '%s' "$resp" \
                 | jq -r '[.content[]? | select(.type == "text") | .text] | join("")' 2>/dev/null || true)
             else
-              echo "summary skipped (stop_reason: ${stop:-none}): $(printf '%s' "$resp" | jq -r '.error.message // empty' 2>/dev/null || true)"
+              # ジョブは成功のまま終わるので、要約が抜けたことに気付けるよう警告にする
+              echo "::warning::リリースノートの要約を生成できませんでした (stop_reason: ${stop:-none}): $(printf '%s' "$resp" | jq -r '.error.message // empty' 2>/dev/null || true)"
             fi
+          else
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN が未設定のため、リリースノートの要約を省きました。"
           fi
 
           # 要約があれば先頭に差し込み、区切り線を挟んで What's Changed を続ける
