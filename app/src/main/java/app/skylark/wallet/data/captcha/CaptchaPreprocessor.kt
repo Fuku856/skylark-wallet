@@ -1,66 +1,32 @@
 package app.skylark.wallet.data.captcha
 
-import android.graphics.Bitmap
+import java.nio.FloatBuffer
 
 object CaptchaPreprocessor {
 
     /** サイトの画像の番号は4〜5桁の半角数字。 */
     val CAPTCHA_PATTERN = Regex("^\\d{4,5}$")
 
+    /** ddddocr.onnx の入力テンソルが要求する画像の高さ（px）。 */
+    const val TARGET_HEIGHT = 64
+
+    /** アスペクト比を保ったまま高さ [TARGET_HEIGHT] にリサイズするときの幅（px）を計算する。 */
+    fun targetWidth(srcWidth: Int, srcHeight: Int): Int {
+        if (srcWidth <= 0 || srcHeight <= 0) return 1
+        return (srcWidth.toFloat() * (TARGET_HEIGHT.toFloat() / srcHeight)).toInt().coerceAtLeast(1)
+    }
+
     /**
-     * 大津の二値化（Otsu's Thresholding）により、背景パステル色を純白（255）、文字色を純黒（0）に二値化する。
+     * ARGB ピクセル配列を白背景合成のグレースケール（0.0f〜1.0f）に変換し、
+     * ONNX 入力用の [FloatBuffer] として返す。
      */
-    fun binarize(src: Bitmap): Bitmap {
-        val width = src.width
-        val height = src.height
-        val totalPixels = width * height
-        val pixels = IntArray(totalPixels)
-        src.getPixels(pixels, 0, width, 0, 0, width, height)
-
-        // 1. グレースケール輝度配列とヒストグラムを計算
-        val grays = IntArray(totalPixels)
-        val histogram = IntArray(256)
-        for (i in 0 until totalPixels) {
-            val gray = luminanceOnWhite(pixels[i])
-            grays[i] = gray
-            histogram[gray]++
+    fun toGrayscaleFloatBuffer(pixels: IntArray): FloatBuffer {
+        val buffer = FloatBuffer.allocate(pixels.size)
+        for (pixel in pixels) {
+            buffer.put(luminanceOnWhite(pixel) / 255.0f)
         }
-
-        // 2. 大津の閾値アルゴリズムにより最適な二値化閾値を探索
-        var sum = 0.0
-        for (i in 0 until 256) {
-            sum += i.toDouble() * histogram[i]
-        }
-
-        var sumB = 0.0
-        var wB = 0
-        var varMax = 0.0
-        var threshold = 128
-
-        for (t in 0 until 256) {
-            wB += histogram[t]
-            if (wB == 0) continue
-            val wF = totalPixels - wB
-            if (wF == 0) break
-
-            sumB += t.toDouble() * histogram[t]
-            val mB = sumB / wB
-            val mF = (sum - sumB) / wF
-
-            val varBetween = wB.toDouble() * wF.toDouble() * (mB - mF) * (mB - mF)
-            if (varBetween > varMax) {
-                varMax = varBetween
-                threshold = t
-            }
-        }
-
-        // 3. 閾値より暗い文字部分を黒、明るい背景部分を白に設定
-        val resultPixels = IntArray(totalPixels)
-        for (i in 0 until totalPixels) {
-            resultPixels[i] = if (grays[i] < threshold) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
-        }
-
-        return Bitmap.createBitmap(resultPixels, width, height, Bitmap.Config.ARGB_8888)
+        buffer.flip()
+        return buffer
     }
 
     /**
@@ -74,6 +40,47 @@ object CaptchaPreprocessor {
         // 整数による高速輝度計算: Y = (77*R + 150*G + 29*B) >> 8
         val gray = (77 * r + 150 * g + 29 * b) shr 8
         return (gray * a + 255 * (255 - a)) / 255
+    }
+
+    /**
+     * ONNX モデルの出力ロジットから、Blank（インデックス 0）と数字（'0'〜'9'）のインデックスのみを比較して
+     * Restricted CTC Greedy Decode を行い、数字文字列を復元する。
+     */
+    fun decodeDigitsCtc(
+        outBuffer: FloatBuffer,
+        seqLen: Int,
+        numClasses: Int,
+        digitIndices: IntArray,
+        charset: List<String>,
+    ): String {
+        val sb = StringBuilder()
+        var prevIndex = -1
+
+        for (t in 0 until seqLen) {
+            val offset = t * numClasses
+
+            // Blank トークン (index 0)
+            var maxVal = outBuffer.get(offset)
+            var maxIndex = 0
+
+            // 数字トークン ('0'〜'9') のみと比較
+            for (dIdx in digitIndices) {
+                val v = outBuffer.get(offset + dIdx)
+                if (v > maxVal) {
+                    maxVal = v
+                    maxIndex = dIdx
+                }
+            }
+
+            if (maxIndex != prevIndex && maxIndex != 0) {
+                if (maxIndex in charset.indices) {
+                    sb.append(charset[maxIndex])
+                }
+            }
+            prevIndex = maxIndex
+        }
+
+        return sb.toString()
     }
 
     /**

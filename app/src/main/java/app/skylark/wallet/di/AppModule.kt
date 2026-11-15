@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.room.Room
 import app.skylark.wallet.BuildConfig
 import app.skylark.wallet.data.captcha.CaptchaSolver
-import app.skylark.wallet.data.captcha.MlKitCaptchaSolver
+import app.skylark.wallet.data.captcha.OnnxCaptchaSolver
 import app.skylark.wallet.data.local.crypto.AeadStringCipher
 import app.skylark.wallet.data.local.crypto.CryptoManager
 import app.skylark.wallet.data.local.crypto.StringCipher
@@ -104,5 +104,5 @@ abstract class RepositoryModule {
     abstract fun bindLookupRepository(impl: SkylarkLookupRepository): LookupRepository
 
     @Binds
-    abstract fun bindCaptchaSolver(impl: MlKitCaptchaSolver): CaptchaSolver
+    abstract fun bindCaptchaSolver(impl: OnnxCaptchaSolver): CaptchaSolver
 }
