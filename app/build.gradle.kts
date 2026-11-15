@@ -39,6 +39,11 @@ android {
             }
             isMinifyEnabled = true
             isShrinkResources = true
+            // 配布する APK は実機向けの ARM だけにする（ONNX Runtime の x86 / x86_64 版で約40MB増えるため）。
+            // デバッグビルドはエミュレーターでも動くよう全 ABI を入れる
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -112,6 +117,7 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.zxing.core)
     implementation(libs.tink.android)
+    implementation(libs.onnxruntime.android)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import app.skylark.wallet.R
 import app.skylark.wallet.data.local.db.VoucherDao
 import app.skylark.wallet.data.local.prefs.SettingsRepository
+import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.Voucher
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -24,13 +25,17 @@ class ExpiryCheckWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        if (!settings.current().expiryNotification) return Result.success()
+        if (!settings.current().expiryNotification) {
+            DebugLog.log("notify", "expiry check skipped")
+            return Result.success()
+        }
         val now = System.currentTimeMillis()
         val notified = settings.notifiedKeys().toMutableSet()
         val vouchers = dao.getAll()
         val existingIds = vouchers.map { it.id }.toSet()
         // 削除済みの券の記録は消す
         notified.retainAll { key -> key.substringBefore(':') in existingIds }
+        var sent = 0
 
         for (voucher in vouchers) {
             val expiry = voucher.expiryAt ?: continue
@@ -51,8 +56,10 @@ class ExpiryCheckWorker @AssistedInject constructor(
                 text = applicationContext.getString(R.string.notification_expiry_text, name, balance),
             )
             notified += key
+            sent++
         }
         settings.setNotifiedKeys(notified)
+        DebugLog.log("notify", "expiry check vouchers=${vouchers.size} sent=$sent")
         return Result.success()
     }
 }

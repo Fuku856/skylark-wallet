@@ -4,11 +4,14 @@ import android.content.Context
 import android.util.Log
 import androidx.room.Room
 import app.skylark.wallet.BuildConfig
+import app.skylark.wallet.data.captcha.CaptchaSolver
+import app.skylark.wallet.data.captcha.OnnxCaptchaSolver
 import app.skylark.wallet.data.local.crypto.AeadStringCipher
 import app.skylark.wallet.data.local.crypto.CryptoManager
 import app.skylark.wallet.data.local.crypto.StringCipher
 import app.skylark.wallet.data.local.db.AppDatabase
 import app.skylark.wallet.data.local.db.VoucherDao
+import app.skylark.wallet.data.remote.LookupLogInterceptor
 import app.skylark.wallet.data.remote.SkylarkEndpoint
 import app.skylark.wallet.data.remote.SkylarkScraper
 import app.skylark.wallet.data.repository.SkylarkLookupRepository
@@ -51,6 +54,7 @@ object AppModule {
                     .build(),
             )
         }
+        .addNetworkInterceptor(LookupLogInterceptor())
         .apply {
             // デバッグビルドのみ。本文（9桁・13桁・HTML）は出さず、Cookie も伏せる。
             // バーコード画像の URL（/input/barcode?13桁）にも番号が入るため、URL 中の長い数字列も伏せる
@@ -98,4 +102,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindLookupRepository(impl: SkylarkLookupRepository): LookupRepository
+
+    @Binds
+    abstract fun bindCaptchaSolver(impl: OnnxCaptchaSolver): CaptchaSolver
 }

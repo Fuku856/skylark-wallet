@@ -44,9 +44,18 @@ object ResultParser {
         "(\\d{4})\\s*年\\s*(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日\\s*(午前|午後)?\\s*(\\d{1,2})\\s*[:：]\\s*(\\d{2})\\s*時?\\s*点",
     )
 
+    fun isMaintenance(doc: Document): Boolean {
+        if (doc.selectFirst(SELECTOR_MAINTENANCE) != null) return true
+        val title = doc.title()
+        if (title.contains("Maintenance", ignoreCase = true) || title.contains("メンテナンス")) return true
+        val text = doc.normalizedText()
+        if (text.contains("Site Maintenance", ignoreCase = true) || text.contains("メンテナンス中")) return true
+        return false
+    }
+
     fun parse(html: String): Outcome {
         val doc = Jsoup.parse(html)
-        if (doc.selectFirst(SELECTOR_MAINTENANCE) != null) return Outcome.Maintenance
+        if (isMaintenance(doc)) return Outcome.Maintenance
 
         val text = doc.normalizedText()
         val barcode = findBarcode(doc, text)

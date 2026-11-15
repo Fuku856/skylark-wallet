@@ -6,9 +6,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -16,8 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.skylark.wallet.data.local.prefs.SettingsRepository
+import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.ThemeMode
 import app.skylark.wallet.ui.SkylarkRoot
 import app.skylark.wallet.ui.captcha.RefreshViewModel
@@ -48,6 +50,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lifecycle.addObserver(LifecycleEventObserver { _, event -> DebugLog.log("app", "activity $event") })
         // Activity が作り直されると、表示中だった認証ダイアログの結果は届かなくなる
         lockViewModel.authenticating = false
         enableEdgeToEdge()

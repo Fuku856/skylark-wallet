@@ -1,6 +1,7 @@
 package app.skylark.wallet.data.remote
 
 import app.skylark.wallet.testutil.Fixtures
+import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -81,6 +82,19 @@ class ResultParserTest {
     @Test
     fun `detects maintenance page`() {
         assertEquals(ResultParser.Outcome.Maintenance, ResultParser.parse(Fixtures.read("maintenance.html")))
+    }
+
+    @Test
+    fun `detects actual maintenance page`() {
+        assertEquals(ResultParser.Outcome.Maintenance, ResultParser.parse(Fixtures.read("maintenance_actual.html")))
+    }
+
+    @Test
+    fun `detects maintenance from japanese body text alone`() {
+        // タイトルが変わっても、本文の「メンテナンス中」で見分けられること
+        val doc = Jsoup.parse(Fixtures.read("maintenance_actual.html"))
+        doc.title("")
+        assertTrue(ResultParser.isMaintenance(doc))
     }
 
     @Test

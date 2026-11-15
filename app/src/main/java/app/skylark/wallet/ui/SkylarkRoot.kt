@@ -14,6 +14,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.IntOffset
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,9 +31,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigationevent.NavigationEvent
 import app.skylark.wallet.R
+import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.AppSettings
 import app.skylark.wallet.ui.barcode.BarcodeScreen
 import app.skylark.wallet.ui.barcode.BarcodeViewModel
+import app.skylark.wallet.ui.captcha.AutoCaptchaFailedDialog
 import app.skylark.wallet.ui.captcha.CaptchaSheet
 import app.skylark.wallet.ui.captcha.RefreshViewModel
 import app.skylark.wallet.ui.common.Format
@@ -64,6 +68,14 @@ private object Routes {
 @Composable
 fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     val navController = rememberNavController()
+    DisposableEffect(navController) {
+        // route は引数を埋める前のパターンなので、券の ID は含まれない
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            DebugLog.log("nav", "${destination.route}")
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
@@ -168,12 +180,17 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
             TermsWebViewScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.HOME) {
+            val settingsViewModel: SettingsViewModel = hiltViewModel()
             HomeScreen(
                 snackbarHostState = snackbarHostState,
                 onRefreshOne = { refreshViewModel.refreshOne(it) },
                 onRefreshAll = refreshViewModel::refreshAll,
                 onOpenBarcode = { navController.navigate(Routes.barcode(it)) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                autoCaptchaEnabled = settings.autoCaptcha,
+                onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
+                debugLogEnabled = settings.debugLog,
+                onToggleDebugLog = settingsViewModel::setDebugLog,
             )
         }
         composable(
@@ -207,12 +224,22 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     }
 
     (refreshState as? RefreshViewModel.UiState.Active)?.let { active ->
-        CaptchaSheet(
-            state = active,
-            onSubmit = refreshViewModel::submit,
-            onChangeImage = refreshViewModel::changeCaptcha,
-            onSkip = refreshViewModel::skip,
-            onCancel = refreshViewModel::cancel,
-        )
+        if (active.phase is RefreshViewModel.Phase.AutoCaptchaLimitReached) {
+            AutoCaptchaFailedDialog(
+                canSkip = active.progress != null,
+                onRetry = refreshViewModel::retryAutoCaptcha,
+                onManual = refreshViewModel::fallbackToManual,
+                onSkip = refreshViewModel::skip,
+                onCancel = refreshViewModel::cancel,
+            )
+        } else {
+            CaptchaSheet(
+                state = active,
+                onSubmit = refreshViewModel::submit,
+                onChangeImage = refreshViewModel::changeCaptcha,
+                onSkip = refreshViewModel::skip,
+                onCancel = refreshViewModel::cancel,
+            )
+        }
     }
 }
