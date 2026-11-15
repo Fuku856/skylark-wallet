@@ -102,7 +102,7 @@ app/src/main/
 ## ビルド
 
 - JDK 17 以上、Android SDK（compileSdk 37 / targetSdk 35 / minSdk 28）
-- AGP 9.4 / Gradle 9.8 / Kotlin 2.4 / Compose BOM 2026.09 / Material3 1.5.0-beta01 / ONNX Runtime 1.20
+- AGP 9.4 / Gradle 9.8 / Kotlin 2.4 / Compose BOM 2026.09 / Material3 1.5.0-beta01 / ONNX Runtime 1.22
 
 ```sh
 ./gradlew :app:testDebugUnitTest   # 単体テスト
@@ -112,6 +112,7 @@ app/src/main/
 
 - テストのメソッド名は ASCII にしてください（日本語名だと、ロケールによってはクラスファイルのパスでビルドが失敗します）。
 - リリースビルドは R8 で縮小します。リフレクションや JNI で使うクラス（ONNX Runtime など）は `app/proguard-rules.pro` で保持しています。
+- リリース APK のネイティブライブラリは arm64-v8a / armeabi-v7a だけです（デバッグビルドは全 ABI）。ネイティブライブラリを含む依存を更新したら、lint の `Aligned16KB` 警告が出ていないこと（16KB ページの端末で読み込めること）を確認してください。
 
 ## 開発の流れ
 
