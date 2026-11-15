@@ -22,7 +22,9 @@ jsoup = "1.23.2"
 zxing = "3.5.4"
 tink = "1.24.0"
 junit = "4.13.2"
-onnxruntime = "1.20.0"
+# 1.20 は arm64 の JNI ライブラリが 16KB 境界に揃っておらず、16KB ページの端末で読み込めない。
+# 1.32 も揃っているが本体の .so が約2倍になるため、揃っている中で小さい 1.22 にしている
+onnxruntime = "1.22.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
