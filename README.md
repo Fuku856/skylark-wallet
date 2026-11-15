@@ -1,29 +1,79 @@
 # Skylark Wallet
 
-すかいらーくご優待券の **9桁のご優待番号** を登録すると、残高・有効期限・13桁のバーコード番号を取得して、端末内に暗号化して保存する Android アプリです。
+すかいらーくご優待券の **9桁のご優待番号** を登録すると、残高・有効期限・13桁のバーコード番号を取得して、端末内に暗号化して保存する Android アプリです。お店ではアプリが描いたバーコードを提示できます。
 
-- 入力するのは、9桁のコード（登録時のみ）と画像認証（CAPTCHA）の数字だけです。CAPTCHA は既定では人が読んで入力します。裏設定に端末内の文字認識（ML Kit）で入力するモードがありますが、既定は OFF です。
-- 外部サーバー・有料 API は使いません。通信・解析・暗号化保存はすべて端末内で行います。
-- サイトへのアクセスは、照会の操作をしたときだけ行います。バックグラウンドでの定期照会はしません（期限通知は保存済みの期限だけを見ます）。
-- 裏設定（ホームの設定アイコンを長押し）で、アプリ全体のデバッグログを logcat（タグ `SkylarkWallet`）に出力できます。出力するのは起動・画面遷移・設定・券の操作（ID のみ）・バックアップと通知の結果・認証の結果・未処理の例外・通信のパスと状態コードと Cookie 名・照会の失敗段階・サイトの CAPTCHA エラー文言・画像の番号・OCR 結果で、ご優待番号・バーコード番号・Cookie の値・メモ・パスワードは出しません。既定は OFF です。
-- UI は Material 3 Expressive（`MaterialExpressiveTheme` / `MotionScheme.expressive()` / Floating Toolbar / Loading Indicator）です。
+- 外部サーバー・有料 API は使いません。通信・解析・CAPTCHA の認識・暗号化保存はすべて端末内で行います。
+- サイト（`https://www.skylarkyutaiken.com/`）へのアクセスは、照会の操作をしたときだけ行います。バックグラウンドでの定期照会はしません。
+- UI は Jetpack Compose + Material 3 Expressive（`MaterialExpressiveTheme` / `MotionScheme.expressive()` / Floating Toolbar / Loading Indicator）です。
+
+## 主な機能
+
+### ホーム
+
+- 総残高（ロール表示）と最終更新日時を表示します。
+- 券は「未使用（期限の近い順）」と「使用済み（残高0円、登録の新しい順）」に分けて並べます。
+- バッジ: 期限まで30日以内は「あと N 日」、期限切れ、最終照会から7日以上は「要更新」、照会エラー、使用済み。
+- 券ごとに、照会・バーコード表示・メモの編集（40文字まで）・削除ができます。ご優待番号の表示には生体認証または画面ロックでの本人確認が必要です。
+- 端末の暗号鍵が無効になって読み込めなくなった券は、まとめて削除できるよう案内します。
+
+### 登録と照会
+
+- 「追加」から9桁の英数字を入力します（ハイフン・空白は自動で除去、クリップボードから貼り付け可）。登録済みの番号は弾きます。
+- 「更新」は、使用済み・期限切れを除いた券を期限の近い順に1枚ずつ照会します（進み具合を `n / N` で表示、スキップ・中止可）。
+- 照会のたびに画像認証（CAPTCHA、4〜5桁の数字）が必要です。既定では人が読んで入力し、「画像交換」で別の画像に替えられます。
+- 結果の画面ごとに、CAPTCHA 不一致・無効なご優待番号・サイトのメンテナンス・通信エラー（再試行可）・想定外の画面を区別して知らせます。
+- サイトの利用規約に同意するまでは照会できません（初回起動時に確認し、設定から取り消しもできます）。
+
+### バーコード
+
+- 取得した13桁の番号から EAN-13 のバーコードをアプリ内で描画します。複数の券は横に送って切り替えられます。
+- 表示中は画面を最大輝度にします（設定で OFF 可、バーコードのタップで切り替え）。
+- 「公式画面で表示」から、前回照会したときの保存済み画面、または CAPTCHA を入力して最新の公式画面を WebView で表示できます。
+
+> サイトの Q&A には「画面上のバーコードを撮影したものを掲示しての利用はできません」とあります。アプリで描画したバーコードがレジで受け付けられるかは、実店舗で確認してください。受け付けられない場合は「公式画面で表示 → 最新を表示」を使ってください。
+
+### 設定
+
+| 項目 | 内容 |
+|---|---|
+| 起動時にロック | 生体認証または画面ロックで解除する（有効化時にも認証を確認） |
+| バーコード表示時に明るさを最大にする | 既定 ON |
+| 有効期限の通知 | 期限の30日前と7日前に通知する。WorkManager で1日1回、保存済みの期限だけを見る（サイトにはアクセスしない） |
+| テーマ | システム既定 / ライト / ダーク |
+| サイトの利用規約 | 同意状態の確認・同意・取り消し |
+| バックアップ | 「バックアップを作成」「バックアップから復元」（機種変更用、下記） |
+
+### 裏設定（詳細設定・試験的機能）
+
+ホームの設定アイコンを**長押し**すると開きます。どちらも既定は OFF です。
+
+- **CAPTCHA を自動で入力**: 端末内の ONNX Runtime と CAPTCHA 専用の CRNN + CTC モデル（`ddddocr.onnx`）で画像の数字を読み取って送信します。3回続けて失敗すると、画像を替えて再試行するか手動で入力するかを尋ねます。モデルは初回の認識時に読み込むので、起動速度には影響しません。経緯は [docs/auto-captcha-investigation.md](docs/auto-captcha-investigation.md) を参照してください。
+- **デバッグログを出力**: アプリ全体の動作を logcat（タグ `SkylarkWallet`）に出力します。出すのは起動・画面遷移・設定・券の操作（ID のみ）・バックアップと通知の結果・認証の結果・未処理の例外・通信のパスと状態コードと Cookie 名・照会の失敗段階・サイトの CAPTCHA エラー文言・画像の番号・OCR の結果です。ご優待番号・バーコード番号・Cookie の値・メモ・パスワードは出しません。
 
 ## 構成
 
 ```text
-app/src/main/java/app/skylark/wallet/
- ├── data/
- │    ├── local/crypto/     # Tink + Android Keystore（AES-256-GCM, AAD = 券の ID）
- │    ├── local/db/         # Room（VoucherEntity / VoucherDao）
- │    ├── local/prefs/      # DataStore（規約同意・ロック・輝度・通知）
- │    ├── remote/           # SkylarkSession / SkylarkScraper / InputForm / ResultParser
- │    └── repository/       # VoucherRepositoryImpl / SkylarkLookupRepository
- ├── domain/                # Voucher・CodeNormalizer・Ean13、Repository、UseCase
- ├── notification/          # 期限通知（WorkManager）
- └── ui/                    # home / captcha / barcode / webview / settings / onboarding / lock / theme
+app/src/main/
+ ├── assets/                     # ddddocr.onnx / charsets_old.json（自動 CAPTCHA 用モデル）
+ └── java/app/skylark/wallet/
+      ├── data/
+      │    ├── backup/           # 端末移行用バックアップ（BackupFormat / BackupPayload / BackupPassword / BackupManager）
+      │    ├── captcha/          # CaptchaPreprocessor / OnnxCaptchaSolver
+      │    ├── local/crypto/     # Tink + Android Keystore（AES-256-GCM, AAD = 券の ID）
+      │    ├── local/db/         # Room（VoucherEntity / VoucherDao）
+      │    ├── local/prefs/      # DataStore（規約同意・ロック・輝度・通知・テーマ・裏設定）
+      │    ├── remote/           # SkylarkSession / SkylarkScraper / InputForm / ResultParser / LookupLogInterceptor
+      │    └── repository/       # VoucherRepositoryImpl / SkylarkLookupRepository
+      ├── di/                    # Hilt モジュール（OkHttp・Room・DataStore など）
+      ├── diagnostics/           # DebugLog（裏設定のデバッグログ）
+      ├── domain/                # Voucher・VoucherSections・CodeNormalizer・MemoNormalizer・Ean13、Repository、UseCase
+      ├── notification/          # 期限通知（WorkManager）
+      └── ui/                    # home / captcha / barcode / webview / settings / onboarding / lock / common / theme
 ```
 
-## サイトの仕様（Phase 1 で確認し、2026-11-07 に再確認した内容）
+主なライブラリ: Hilt / Room / DataStore / WorkManager / Biometric / OkHttp / jsoup / ZXing / Tink / ONNX Runtime / kotlinx.serialization
+
+## サイトの仕様（2026-11-07 に再確認）
 
 `GET https://www.skylarkyutaiken.com/input` の実 HTML（`app/src/test/resources/skylark/input.html`）から確認しました。
 
@@ -35,6 +85,7 @@ app/src/main/java/app/skylark/wallet/
 | 規約同意 | `agree=1`（同意済みのときだけ送る） |
 | hidden / CSRF | `csrf_test_name`（`csrf_cookie_name` Cookie と対応）。hidden はフォームから読み取って自動で送る |
 | CAPTCHA 画像 | `/input/captcha?<数値>`。`ci_session` Cookie に紐づき、この Cookie は画像の応答で発行される（有効期限5分）。「画像交換」はクエリを変えて再取得するだけ |
+| メンテナンス | 実際のメンテナンス画面（`maintenance_actual.html`）で確認。`#gh.mainte`、タイトルや本文の「メンテナンス」「Site Maintenance」で検知する |
 
 結果画面・エラー画面は、POST に有効なコードと CAPTCHA の手入力が必要なため未取得です。`/css/public.css` の `body.inp` 向けスタイルから次の構造を推定し、`ResultParser` の先頭に定数としてまとめています。セレクタで取れない場合は、本文テキストの正規表現で読み取ります。
 
@@ -44,23 +95,29 @@ app/src/main/java/app/skylark/wallet/
 | 残高確認日時 | `hgroup.ticket p.date` |
 | バーコード番号 / 画像 | `.bcode span` / `.bcode img` |
 | 有効期限 | `.limit` |
-| エラー | `p.err`（「画像」を含めば CAPTCHA 不一致、それ以外は無効なコード） |
-| メンテナンス | `#gh.mainte` |
+| エラー | `p.err`（番号のエラーなら無効なコード、それ以外は CAPTCHA 不一致として扱う） |
 
 `result_sample.html` などは合成データです。実際の結果画面を取得できたら、番号をマスクして差し替え、セレクタを確定してください。
-
-> サイトの Q&A には「画面上のバーコードを撮影したものを掲示しての利用はできません」とあります。アプリで描画したバーコードがレジで受け付けられるかは、実店舗で確認してください。受け付けられない場合は「公式画面で表示 → 最新を表示」を使ってください。
 
 ## ビルド
 
 - JDK 17 以上、Android SDK（compileSdk 37 / targetSdk 35 / minSdk 28）
-- AGP 9.4 / Gradle 9.8 / Kotlin 2.4 / Material3 1.5.0-beta01
+- AGP 9.4 / Gradle 9.8 / Kotlin 2.4 / Compose BOM 2026.09 / Material3 1.5.0-beta01 / ONNX Runtime 1.20
 
 ```sh
 ./gradlew :app:testDebugUnitTest   # 単体テスト
-./gradlew :app:assembleDebug       # デバッグ APK
 ./gradlew :app:lintDebug
+./gradlew :app:assembleDebug       # デバッグ APK
 ```
+
+- テストのメソッド名は ASCII にしてください（日本語名だと、ロケールによってはクラスファイルのパスでビルドが失敗します）。
+- リリースビルドは R8 で縮小します。リフレクションや JNI で使うクラス（ONNX Runtime など）は `app/proguard-rules.pro` で保持しています。
+
+## 開発の流れ
+
+- 作業ブランチの PR は、まず **`dev`** に向けて作ります（`main` に直接向けない）。
+- `dev` に入った変更でベータ版をビルドし、確認できたら `dev` から `main` にマージします。
+- PR タイトルはそのままリリースノートの What's Changed に載るので、`feat:` / `fix:` などの接頭辞を付け、内容が分かる日本語にします。
 
 ## リリース
 
@@ -68,6 +125,8 @@ GitHub でリリースを手動で公開すると、`.github/workflows/release.y
 
 1. **APK のビルドと添付**: リリースのタグが指すコミットから署名付き APK をビルドし、`skylark-wallet_<タグ>.apk` としてリリースに添付します。versionName はタグから先頭の `v` を除いた値（例 `v1.0.0-beta1` → `1.0.0-beta1`）、versionCode はワークフローの実行番号です。タグは、「Set as a pre-release」にチェックしたリリース（ベータ）なら `dev`、正式版なら `main` に入っているコミットに打ってください（リリース作成画面の Target をそのブランチにする）。違うブランチのコミットだとビルドを中止します。
 2. **リリースノートの自動生成**: 前回のリリース（ベータは直前のリリース、正式版は直前の正式版）からの PR 一覧で What's Changed と Full Changelog を作ります。さらに Claude が利用者向けの要約（新機能／改善・修正）を作り、本文の先頭に付けます。
+
+アプリの変更点ではない PR（紹介ページなど）は、`site` ラベルを付けるとリリースノートから除外されます（`.github/release.yml`）。
 
 ### 必要な Secret（Settings → Secrets and variables → Actions）
 
@@ -93,15 +152,13 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-release-secrets.ps1
 
 keystore のファイルとパスワードは、必ず安全な場所にバックアップしてください。同じ鍵で署名し続けないと、アプリをアップデートできなくなります。
 
-アプリの変更点ではない PR（紹介ページなど）は、`site` ラベルを付けるとリリースノートから除外されます（`.github/release.yml`）。
-
 ## セキュリティ
 
 - 9桁・13桁・結果 HTML は平文で保存しません（Tink AEAD、associated data に券の ID）。
-- バーコード画面・公式画面は `FLAG_SECURE` でスクリーンショットと「最近使ったアプリ」への映り込みを防ぎます。
-- `allowBackup="false"`、バックアップ・端末間転送ルールで DB と Keyset を除外しています。
-- 機種変更には、設定の「バックアップを作成」「バックアップから復元」を使います（下記）。
-- 通信は HTTPS のみ（`network_security_config` で cleartext 禁止）。通信ログはデバッグビルドのみで、本文と Cookie は出しません。
+- バーコード画面・公式画面・ご優待番号の表示・バックアップのパスワード画面は `FLAG_SECURE` でスクリーンショットと「最近使ったアプリ」への映り込みを防ぎます。
+- `allowBackup="false"`、バックアップ・端末間転送ルールで DB と Keyset を除外しています。機種変更には設定の「バックアップを作成」「バックアップから復元」を使います（下記）。
+- 通信は HTTPS のみ（`network_security_config` で cleartext 禁止）。OkHttp の通信ログはデバッグビルドのみで、本文と Cookie は出しません。
+- WebView はファイル・コンテンツへのアクセス、DOM ストレージ、新しいウィンドウ、位置情報、フォームの保存を無効にしています。
 - 起動時の生体認証ロック（設定で ON/OFF）。
 
 ### 端末移行用のバックアップ
@@ -119,3 +176,7 @@ Keystore の鍵は端末の外に持ち出せないため、バックアップ�
 - 書き出しの前には、アプリのロック設定に関わらず毎回、生体認証または画面ロックでの本人確認を求めます（画面ロックが無い端末では作成できません）。
 - パスワードの表示・入力画面は `FLAG_SECURE` でスクリーンショットを禁止します（写真がクラウドに同期され、ファイルと同じ場所に置かれるのを避けるため）。
 - ファイルとパスワードの両方が他人に渡ると券を使われるおそれがあるので、別々に保管し、移行後は削除するよう画面で案内します。
+
+## ライセンス
+
+[MIT License](LICENSE)
