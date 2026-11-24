@@ -27,12 +27,15 @@ class SaveLookupResultUseCase @Inject constructor(
             }
             is ResultParser.Outcome.CaptchaMismatch -> LookupOutcome.CaptchaMismatch(parsed.message)
             is ResultParser.Outcome.InvalidCode -> LookupOutcome.InvalidCode(parsed.message)
+            is ResultParser.Outcome.Suspended -> LookupOutcome.Suspended(parsed.message)
             ResultParser.Outcome.Maintenance -> LookupOutcome.Maintenance
             ResultParser.Outcome.Unknown -> LookupOutcome.ParseFailure
         }
         when (outcome) {
             is LookupOutcome.Success -> voucherRepository.saveResult(voucher.id, outcome.result, outcome.html)
             is LookupOutcome.InvalidCode -> voucherRepository.markError(voucher.id, outcome.message.orEmpty())
+            // 券にサイトの案内（問い合わせ先）を残す
+            is LookupOutcome.Suspended -> voucherRepository.markError(voucher.id, outcome.message)
             else -> Unit
         }
         return outcome

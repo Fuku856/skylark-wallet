@@ -239,6 +239,12 @@ class RefreshViewModel @Inject constructor(
                 _events.send(Event.Failed(R.string.error_invalid_code, outcome.message))
                 if (mode == Mode.Batch) next(afterSubmit = true) else finish()
             }
+            is LookupOutcome.Suspended -> {
+                // 一部の番号だけが止まっている可能性があるので、一括更新では次の券へ進む
+                DebugLog.log("lookup", "outcome=suspended")
+                _events.send(Event.Failed(R.string.error_suspended))
+                if (mode == Mode.Batch) next(afterSubmit = true) else finish()
+            }
             LookupOutcome.Maintenance -> {
                 DebugLog.log("lookup", "outcome=maintenance")
                 _events.send(Event.Failed(R.string.error_maintenance, batchProgress = batchProgress()))

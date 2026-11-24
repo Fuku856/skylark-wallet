@@ -19,6 +19,8 @@ object ResultParser {
         data class Success(val result: VoucherResult) : Outcome
         data class CaptchaMismatch(val message: String?) : Outcome
         data class InvalidCode(val message: String?) : Outcome
+        /** サイトがご優待番号の取り扱いを一時停止している（2026-11 の情報流出の確認手続きなど）。 */
+        data class Suspended(val message: String) : Outcome
         data object Maintenance : Outcome
         data object Unknown : Outcome
     }
@@ -75,6 +77,9 @@ object ResultParser {
         // 入力フォームが再表示された場合はエラー
         if (isInputForm(doc)) {
             val messages = doc.select(SELECTOR_ERROR).map { it.text().trim() }.filter { it.isNotEmpty() }
+            // 取り扱いの一時停止の案内は「優待」を含むが番号の誤りではないので、先に分ける
+            val suspended = messages.filter { it.isSuspension() }
+            if (suspended.isNotEmpty()) return Outcome.Suspended(suspended.joinToString("\n"))
             // 番号のエラーが1つでもあれば番号の誤り。それ以外（文言が想定外のものを含む）は CAPTCHA の不一致として
             // 扱い、有効な券を「無効」と記録しないようにする
             val codeErrors = messages.filter { it.isCodeError() }
@@ -173,6 +178,12 @@ object ResultParser {
                 .atZone(TOKYO).toInstant().toEpochMilli()
         }.getOrNull()
     }
+
+    /**
+     * 取り扱いの一時停止の案内か。2026-11-25 に実機で確認した文言は
+     * 「現在、システム上の確認手続きのため、ご入力いただいた番号のお取り扱いを一時停止しております。…」。
+     */
+    private fun String.isSuspension(): Boolean = contains("一時停止")
 
     /** ご優待番号についてのエラー文言か（画像の番号についての文言は除く）。実際の文言は未確認。 */
     private fun String.isCodeError(): Boolean =
