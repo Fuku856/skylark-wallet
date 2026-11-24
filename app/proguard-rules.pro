@@ -6,10 +6,6 @@
 # Jsoup の re2j はオプション依存
 -dontwarn com.google.re2j.**
 
-# ONNX Runtime
-# JNI から Java クラス・コンストラクタ・メソッドを参照するため保持する
--keep class ai.onnxruntime.** { *; }
-
 # OkHttp
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**

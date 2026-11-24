@@ -91,8 +91,6 @@ fun HomeScreen(
     onRefreshAll: () -> Unit,
     onOpenBarcode: (voucherId: String?) -> Unit,
     onOpenSettings: () -> Unit,
-    autoCaptchaEnabled: Boolean,
-    onToggleAutoCaptcha: (Boolean) -> Unit,
     debugLogEnabled: Boolean,
     onToggleDebugLog: (Boolean) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -214,8 +212,6 @@ fun HomeScreen(
 
     if (showSecretSettings) {
         SecretSettingsDialog(
-            autoCaptchaEnabled = autoCaptchaEnabled,
-            onToggleAutoCaptcha = onToggleAutoCaptcha,
             debugLogEnabled = debugLogEnabled,
             onToggleDebugLog = onToggleDebugLog,
             onDismiss = { showSecretSettings = false },

@@ -56,7 +56,7 @@
     <string name="add_error_duplicate">このご優待番号は登録済みです</string>
     <string name="add_error_format">9桁の半角英数字を入力してください</string>
 
-    <!-- 照会（CAPTCHA） -->
+    <!-- 照会 -->
     <string name="lookup_title">残高を照会</string>
     <string name="lookup_target">%1$s（末尾 %2$s）</string>
     <string name="lookup_progress">%1$d / %2$d</string>
@@ -172,10 +172,8 @@
     <string name="notification_channel_expiry">有効期限のお知らせ</string>
     <string name="notification_expiry_title">優待券の有効期限まであと%1$d日です</string>
     <string name="notification_expiry_text">%1$s（残高 %2$s）</string>
-    <!-- 自動CAPTCHA & 裏設定 -->
+    <!-- 裏設定 -->
     <string name="secret_settings_title">詳細設定（試験的機能）</string>
-    <string name="secret_settings_auto_captcha_title">CAPTCHAを自動で入力</string>
-    <string name="secret_settings_auto_captcha_description">優待券照会時のCAPTCHA画像を端末内で自動認識します。デフォルトはOFF（自分で解く）です。</string>
     <string name="secret_settings_debug_log_title">デバッグログを出力</string>
     <string name="secret_settings_debug_log_description">アプリの動作と失敗した段階を端末のログ（logcat）に出力します。ご優待番号は出力しません。デフォルトはOFFです。</string>
 </resources>
