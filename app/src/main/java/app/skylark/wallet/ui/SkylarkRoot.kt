@@ -192,8 +192,6 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
                     onRefreshAll = refreshViewModel::refreshAll,
                     onOpenBarcode = { navController.navigate(Routes.barcode(it)) },
                     onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                    autoCaptchaEnabled = settings.autoCaptcha,
-                    onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
                     debugLogEnabled = settings.debugLog,
                     onToggleDebugLog = settingsViewModel::setDebugLog,
                 )

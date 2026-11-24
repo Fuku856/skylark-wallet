@@ -4,8 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.room.Room
 import app.skylark.wallet.BuildConfig
-import app.skylark.wallet.data.captcha.CaptchaSolver
-import app.skylark.wallet.data.captcha.OnnxCaptchaSolver
 import app.skylark.wallet.data.local.crypto.AeadStringCipher
 import app.skylark.wallet.data.local.crypto.CryptoManager
 import app.skylark.wallet.data.local.crypto.StringCipher
@@ -89,7 +87,4 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindVoucherRepository(impl: VoucherRepositoryImpl): VoucherRepository
-
-    @Binds
-    abstract fun bindCaptchaSolver(impl: OnnxCaptchaSolver): CaptchaSolver
 }

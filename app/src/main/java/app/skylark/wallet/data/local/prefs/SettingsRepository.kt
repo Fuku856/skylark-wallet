@@ -31,7 +31,6 @@ class SettingsRepository @Inject constructor(
         val EXPIRY_NOTIFICATION = booleanPreferencesKey("expiry_notification")
         val NOTIFIED_KEYS = stringSetPreferencesKey("notified_keys")
         val THEME_MODE = stringPreferencesKey("theme_mode")
-        val AUTO_CAPTCHA = booleanPreferencesKey("auto_captcha")
         val DEBUG_LOG = booleanPreferencesKey("debug_log")
     }
 
@@ -43,7 +42,6 @@ class SettingsRepository @Inject constructor(
             autoBrightness = prefs[Keys.AUTO_BRIGHTNESS] ?: true,
             expiryNotification = prefs[Keys.EXPIRY_NOTIFICATION] ?: false,
             themeMode = ThemeMode.entries.firstOrNull { it.name == prefs[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM,
-            autoCaptcha = prefs[Keys.AUTO_CAPTCHA] ?: false,
             debugLog = prefs[Keys.DEBUG_LOG] ?: false,
         )
     }
@@ -63,8 +61,6 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { it[Keys.EXPIRY_NOTIFICATION] = enabled }
 
     suspend fun setThemeMode(mode: ThemeMode) = context.dataStore.edit { it[Keys.THEME_MODE] = mode.name }
-
-    suspend fun setAutoCaptcha(enabled: Boolean) = context.dataStore.edit { it[Keys.AUTO_CAPTCHA] = enabled }
 
     suspend fun setDebugLog(enabled: Boolean) = context.dataStore.edit { it[Keys.DEBUG_LOG] = enabled }
 

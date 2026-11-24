@@ -6,7 +6,7 @@ import android.util.Log
  * アプリ全体のデバッグログ。裏設定で ON にしたときだけ logcat（タグ [TAG]）に出す。
  *
  * ご優待番号・バーコード番号・Cookie の値・HTML・メモ・バックアップのパスワードは渡さないこと。
- * 不具合調査のため、画像の番号と OCR の認識結果は出力する。念のため、長い数字列はここでも伏せる。
+ * reCAPTCHA のトークンも渡さない。念のため、長い数字列はここでも伏せる。
  */
 object DebugLog {
     const val TAG = "SkylarkWallet"

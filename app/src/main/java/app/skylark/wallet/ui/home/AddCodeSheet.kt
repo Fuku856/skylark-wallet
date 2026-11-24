@@ -46,7 +46,7 @@ import app.skylark.wallet.ui.common.KeyboardBottomSheet
 import kotlinx.coroutines.launch
 
 /**
- * 9桁のご優待番号を登録するシート。登録後はそのまま照会（CAPTCHA）へ進む。
+ * 9桁のご優待番号を登録するシート。登録後はそのまま照会へ進む。
  */
 @Composable
 fun AddCodeSheet(

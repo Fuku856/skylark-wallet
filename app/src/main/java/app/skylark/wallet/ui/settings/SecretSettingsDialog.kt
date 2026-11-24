@@ -28,8 +28,6 @@ import app.skylark.wallet.R
  */
 @Composable
 fun SecretSettingsDialog(
-    autoCaptchaEnabled: Boolean,
-    onToggleAutoCaptcha: (Boolean) -> Unit,
     debugLogEnabled: Boolean,
     onToggleDebugLog: (Boolean) -> Unit,
     onDismiss: () -> Unit,
@@ -51,12 +49,6 @@ fun SecretSettingsDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                SecretSwitchRow(
-                    title = stringResource(R.string.secret_settings_auto_captcha_title),
-                    description = stringResource(R.string.secret_settings_auto_captcha_description),
-                    checked = autoCaptchaEnabled,
-                    onCheckedChange = onToggleAutoCaptcha,
-                )
                 SecretSwitchRow(
                     title = stringResource(R.string.secret_settings_debug_log_title),
                     description = stringResource(R.string.secret_settings_debug_log_description),

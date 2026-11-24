@@ -2,7 +2,7 @@
 
 すかいらーくご優待券の **9桁のご優待番号** を登録すると、残高・有効期限・13桁のバーコード番号を取得して、端末内に暗号化して保存する Android アプリです。お店ではアプリが描いたバーコードを提示できます。
 
-- 外部サーバー・有料 API は使いません。通信・解析・CAPTCHA の認識・暗号化保存はすべて端末内で行います。
+- 外部サーバー・有料 API は使いません。通信・解析・暗号化保存はすべて端末内で行います（照会時の reCAPTCHA はサイトが読み込む Google のものです）。
 - サイト（`https://www.skylarkyutaiken.com/`）へのアクセスは、照会の操作をしたときだけ行います。バックグラウンドでの定期照会はしません。
 - UI は Jetpack Compose + Material 3 Expressive（`MaterialExpressiveTheme` / `MotionScheme.expressive()` / Floating Toolbar / Loading Indicator）です。
 
@@ -20,15 +20,17 @@
 
 - 「追加」から9桁の英数字を入力します（ハイフン・空白は自動で除去、クリップボードから貼り付け可）。登録済みの番号は弾きます。
 - 「更新」は、使用済み・期限切れを除いた券を期限の近い順に1枚ずつ照会します（進み具合を `n / N` で表示、スキップ・中止可）。
-- 照会のたびに画像認証（CAPTCHA、4〜5桁の数字）が必要です。既定では人が読んで入力し、「画像交換」で別の画像に替えられます。
-- 結果の画面ごとに、CAPTCHA 不一致・無効なご優待番号・サイトのメンテナンス・通信エラー（再試行可）・想定外の画面を区別して知らせます。
+- 照会はサイトの入力画面をアプリ内の WebView で開いて行います。9桁の入力・規約への同意・送信・結果の保存・次の券への移動はアプリが行い、**人がするのは reCAPTCHA の「私はロボットではありません」のチェックだけ**です（画像の選択を求められたときはそれも人が解きます）。チェックが済むと自動で送信します。
+- 一括更新では、送信してから次の券の入力画面を開くまで 2 秒あけます。
+- 認証が通らなかったときは自動ではやり直さず、入力画面を開き直してもう一度チェックしてもらいます。
+- 結果の画面ごとに、認証の失敗・無効なご優待番号・サイトのメンテナンス・通信エラー（再試行可）・想定外の画面を区別して知らせます。
 - サイトの利用規約に同意するまでは照会できません（初回起動時に確認し、設定から取り消しもできます）。
 
 ### バーコード
 
 - 取得した13桁の番号から EAN-13 のバーコードをアプリ内で描画します。複数の券は横に送って切り替えられます。
 - 表示中は画面を最大輝度にします（設定で OFF 可、バーコードのタップで切り替え）。
-- 「公式画面で表示」から、前回照会したときの保存済み画面、または CAPTCHA を入力して最新の公式画面を WebView で表示できます。
+- 「公式画面で表示」から、前回照会したときの保存済み画面、またはその場で照会した最新の公式画面を WebView で表示できます。
 
 > サイトの Q&A には「画面上のバーコードを撮影したものを掲示しての利用はできません」とあります。アプリで描画したバーコードがレジで受け付けられるかは、実店舗で確認してください。受け付けられない場合は「公式画面で表示 → 最新を表示」を使ってください。
 
@@ -45,49 +47,47 @@
 
 ### 裏設定（詳細設定・試験的機能）
 
-ホームの設定アイコンを**長押し**すると開きます。どちらも既定は OFF です。
+ホームの設定アイコンを**長押し**すると開きます。既定は OFF です。
 
-- **CAPTCHA を自動で入力**: 端末内の ONNX Runtime と CAPTCHA 専用の CRNN + CTC モデル（`ddddocr.onnx`）で画像の数字を読み取って送信します。3回続けて失敗すると、画像を替えて再試行するか手動で入力するかを尋ねます。モデルは初回の認識時に読み込むので、起動速度には影響しません。経緯は [docs/auto-captcha-investigation.md](docs/auto-captcha-investigation.md) を参照してください。
-- **デバッグログを出力**: アプリ全体の動作を logcat（タグ `SkylarkWallet`）に出力します。出すのは起動・画面遷移・設定・券の操作（ID のみ）・バックアップと通知の結果・認証の結果・未処理の例外・通信のパスと状態コードと Cookie 名・照会の失敗段階・サイトの CAPTCHA エラー文言・画像の番号・OCR の結果です。ご優待番号・バーコード番号・Cookie の値・メモ・パスワードは出しません。
+- **デバッグログを出力**: アプリ全体の動作を logcat（タグ `SkylarkWallet`）に出力します。出すのは起動・画面遷移・設定・券の操作（ID のみ）・バックアップと通知の結果・認証の結果・未処理の例外・通信のパスと状態コードと Cookie 名・照会の段階（入力画面の読み込み・チェック完了・送信・結果）・サイトのエラー文言・結果画面の各項目がセレクタと本文のどちらで取れたかです。ご優待番号・バーコード番号・残高・Cookie の値・reCAPTCHA のトークン・メモ・パスワードは出しません。
+
+以前あった「CAPTCHA を自動で入力」（端末内の OCR で画像の数字を読む機能）は、サイトが reCAPTCHA に移行したため廃止しました。経緯は [docs/auto-captcha-investigation.md](docs/auto-captcha-investigation.md) に残しています。
 
 ## 構成
 
 ```text
 app/src/main/
- ├── assets/                     # ddddocr.onnx / charsets_old.json（自動 CAPTCHA 用モデル）
  └── java/app/skylark/wallet/
       ├── data/
       │    ├── backup/           # 端末移行用バックアップ（BackupFormat / BackupPayload / BackupPassword / BackupManager）
-      │    ├── captcha/          # CaptchaPreprocessor / OnnxCaptchaSolver
       │    ├── local/crypto/     # Tink + Android Keystore（AES-256-GCM, AAD = 券の ID）
       │    ├── local/db/         # Room（VoucherEntity / VoucherDao）
       │    ├── local/prefs/      # DataStore（規約同意・ロック・輝度・通知・テーマ・裏設定）
-      │    ├── remote/           # SkylarkSession / SkylarkScraper / InputForm / ResultParser / LookupLogInterceptor
-      │    └── repository/       # VoucherRepositoryImpl / SkylarkLookupRepository
+      │    ├── remote/           # ResultParser / BarcodeImageInliner / LookupLogInterceptor
+      │    └── repository/       # VoucherRepositoryImpl
       ├── di/                    # Hilt モジュール（OkHttp・Room・DataStore など）
       ├── diagnostics/           # DebugLog（裏設定のデバッグログ）
       ├── domain/                # Voucher・VoucherSections・CodeNormalizer・MemoNormalizer・Ean13、Repository、UseCase
       ├── notification/          # 期限通知（WorkManager）
-      └── ui/                    # home / captcha / barcode / webview / settings / onboarding / lock / common / theme
+      └── ui/                    # home / lookup（照会の WebView）/ barcode / webview / settings / onboarding / lock / common / theme
 ```
 
-主なライブラリ: Hilt / Room / DataStore / WorkManager / Biometric / OkHttp / jsoup / ZXing / Tink / ONNX Runtime / kotlinx.serialization
+主なライブラリ: Hilt / Room / DataStore / WorkManager / Biometric / OkHttp / jsoup / ZXing / Tink / kotlinx.serialization
 
-## サイトの仕様（2026-11-07 に再確認）
+## サイトの仕様（2026-11-24 に再確認）
 
-`GET https://www.skylarkyutaiken.com/input` の実 HTML（`app/src/test/resources/skylark/input.html`）から確認しました。
+`GET https://www.skylarkyutaiken.com/input` の実 HTML（`app/src/test/resources/skylark/input.html`）から確認しました。照会はこの画面を WebView で開き、`ui/lookup/LookupScript.kt` の JavaScript で番号の入力と送信を行います。
 
 | 項目 | 内容 |
 |---|---|
-| フォーム | `POST /input`（`name="codeform"`） |
+| フォーム | `POST /input`（`name="codeform"`）。送信はサイトの「送信」ボタン（`input[type=submit]`）を押す |
 | ご優待番号 | `code[0]` / `code[1]` / `code[2]`（3文字ずつ） |
-| 画像の番号 | `captchakey` |
-| 規約同意 | `agree=1`（同意済みのときだけ送る） |
-| hidden / CSRF | `csrf_test_name`（`csrf_cookie_name` Cookie と対応）。hidden はフォームから読み取って自動で送る |
-| CAPTCHA 画像 | `/input/captcha?<数値>`。`ci_session` Cookie に紐づき、この Cookie は画像の応答で発行される（有効期限5分）。「画像交換」はクエリを変えて再取得するだけ |
+| 認証 | reCAPTCHA Enterprise のチェックボックス（`div#charge-recaptcha.g-recaptcha`、`data-action="INPUT"`）。トークンはウィジェットの textarea `#g-recaptcha-response` に入り、サイトの hidden `#g-recaptcha-response-input`（`name="g-recaptcha-response"`）にも写して送る |
+| 規約同意 | `agree=1`（アプリで同意済みのときだけチェックを入れる） |
+| hidden / CSRF | `csrf_test_name`（`csrf_cookie_name` Cookie と対応）。WebView がそのまま送る |
 | メンテナンス | 実際のメンテナンス画面（`maintenance_actual.html`）で確認。`#gh.mainte`、タイトルや本文の「メンテナンス」「Site Maintenance」で検知する |
 
-結果画面・エラー画面は、POST に有効なコードと CAPTCHA の手入力が必要なため未取得です。`/css/public.css` の `body.inp` 向けスタイルから次の構造を推定し、`ResultParser` の先頭に定数としてまとめています。セレクタで取れない場合は、本文テキストの正規表現で読み取ります。
+結果画面・エラー画面はまだ実物を保存していません。`/css/public.css` の `body.inp` 向けスタイルから次の構造を推定し、`ResultParser` の先頭に定数としてまとめています。セレクタで取れない場合は、本文テキストの正規表現で読み取ります。
 
 | 項目 | 推定セレクタ |
 |---|---|
@@ -95,14 +95,14 @@ app/src/main/
 | 残高確認日時 | `hgroup.ticket p.date` |
 | バーコード番号 / 画像 | `.bcode span` / `.bcode img` |
 | 有効期限 | `.limit` |
-| エラー | `p.err`（番号のエラーなら無効なコード、それ以外は CAPTCHA 不一致として扱う） |
+| エラー | `p.err`（番号のエラーなら無効なコード、それ以外は認証の失敗として扱う） |
 
-`result_sample.html` などは合成データです。実際の結果画面を取得できたら、番号をマスクして差し替え、セレクタを確定してください。
+`result_sample.html` などは合成データです。デバッグログの `result balance=… barcode=…` で、実際の結果画面の各項目がセレクタ（`selector`）と本文の正規表現（`text`）のどちらで取れたかを確認できます。実際の結果画面を取得できたら、番号をマスクして差し替え、セレクタを確定してください。
 
 ## ビルド
 
 - JDK 17 以上、Android SDK（compileSdk 37 / targetSdk 35 / minSdk 28）
-- AGP 9.4 / Gradle 9.8 / Kotlin 2.4 / Compose BOM 2026.09 / Material3 1.5.0-beta01 / ONNX Runtime 1.22
+- AGP 9.4 / Gradle 9.8 / Kotlin 2.4 / Compose BOM 2026.09 / Material3 1.5.0-beta01
 
 ```sh
 ./gradlew :app:testDebugUnitTest   # 単体テスト
@@ -111,8 +111,8 @@ app/src/main/
 ```
 
 - テストのメソッド名は ASCII にしてください（日本語名だと、ロケールによってはクラスファイルのパスでビルドが失敗します）。
-- リリースビルドは R8 で縮小します。リフレクションや JNI で使うクラス（ONNX Runtime など）は `app/proguard-rules.pro` で保持しています。
-- リリース APK のネイティブライブラリは arm64-v8a / armeabi-v7a だけです（デバッグビルドは全 ABI）。ネイティブライブラリを含む依存を更新したら、lint の `Aligned16KB` 警告が出ていないこと（16KB ページの端末で読み込めること）を確認してください。
+- リリースビルドは R8 で縮小します。リフレクションで使うクラスは `app/proguard-rules.pro` で保持しています。
+- ネイティブライブラリを含む依存を追加・更新したら、lint の `Aligned16KB` 警告が出ていないこと（16KB ページの端末で読み込めること）を確認してください。
 
 ## 開発の流れ
 
@@ -159,7 +159,9 @@ keystore のファイルとパスワードは、必ず安全な場所にバッ�
 - バーコード画面・公式画面・ご優待番号の表示・バックアップのパスワード画面は `FLAG_SECURE` でスクリーンショットと「最近使ったアプリ」への映り込みを防ぎます。
 - `allowBackup="false"`、バックアップ・端末間転送ルールで DB と Keyset を除外しています。機種変更には設定の「バックアップを作成」「バックアップから復元」を使います（下記）。
 - 通信は HTTPS のみ（`network_security_config` で cleartext 禁止）。OkHttp の通信ログはデバッグビルドのみで、本文と Cookie は出しません。
-- WebView はファイル・コンテンツへのアクセス、DOM ストレージ、新しいウィンドウ、位置情報、フォームの保存を無効にしています。
+- WebView はファイル・コンテンツへのアクセス、新しいウィンドウ、位置情報、フォームの保存を無効にしています。DOM ストレージは照会の WebView だけで有効にし（reCAPTCHA に必要なため）、照会が終わったら Cookie と DOM ストレージを消します。
+- 照会の WebView はサイト（`https://www.skylarkyutaiken.com`）以外へ画面遷移させず、JavaScript の注入もサイトのページでだけ行います。JS ブリッジ（`addJavascriptInterface`）は使いません。User-Agent は変えません。
+- 照会の画面も `FLAG_SECURE` でスクリーンショットを防ぎます。
 - 起動時の生体認証ロック（設定で ON/OFF）。
 
 ### 端末移行用のバックアップ

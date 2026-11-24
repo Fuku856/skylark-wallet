@@ -1,7 +1,7 @@
 package app.skylark.wallet.domain.model
 
 data class AppSettings(
-    /** サイトの利用規約に同意済みか。同意済みのときだけ POST に同意フラグを付ける。 */
+    /** サイトの利用規約に同意済みか。同意済みのときだけ照会でき、入力画面の同意欄にチェックを入れる。 */
     val termsAgreed: Boolean = false,
     /** 初回の規約同意画面を表示済みか。 */
     val termsPrompted: Boolean = false,
@@ -9,7 +9,6 @@ data class AppSettings(
     val autoBrightness: Boolean = true,
     val expiryNotification: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val autoCaptcha: Boolean = false,
     /** 照会の診断ログを logcat に出すか。 */
     val debugLog: Boolean = false,
 )
