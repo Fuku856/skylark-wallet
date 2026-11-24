@@ -72,6 +72,16 @@ class ResultParserTest {
     }
 
     @Test
+    fun `suspension notice is suspended not invalid code`() {
+        val notice = "現在、システム上の確認手続きのため、ご入力いただいた番号のお取り扱いを一時停止しております。" +
+            " [すかいらーく優待券管理センター]"
+        val html = Fixtures.read("input.html")
+            .replace("<div class=\"notice\">", "<p class=\"err\">$notice</p><div class=\"notice\">")
+
+        assertEquals(ResultParser.Outcome.Suspended(notice), ResultParser.parse(html))
+    }
+
+    @Test
     fun `selector report names how each field was found`() {
         val report = ResultParser.selectorReport(Fixtures.read("result_sample.html"))
         assertTrue(report.contains("balance="))

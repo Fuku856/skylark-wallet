@@ -118,6 +118,12 @@ class LookupPageDriver(
 
     private val poll = Runnable { checkToken(generation) }
 
+    /** 入力画面や結果ページが [PAGE_TIMEOUT_MILLIS] たっても出なければ想定外として終える。 */
+    private val pageTimeout = Runnable {
+        DebugLog.log("lookup", "page timeout submitted=$submitted")
+        fail(RefreshViewModel.PageProblem.Unexpected)
+    }
+
     val client = object : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             // reCAPTCHA の iframe などサブフレームの遷移は止めない。画面全体はサイト以外へ遷移させない
@@ -167,6 +173,8 @@ class LookupPageDriver(
         submitted = false
         resultHandled = false
         failed = false
+        handler.removeCallbacks(pageTimeout)
+        handler.postDelayed(pageTimeout, PAGE_TIMEOUT_MILLIS)
         webView.stopLoading()
         webView.loadUrl(LookupHost.INPUT_URL)
     }
@@ -181,10 +189,16 @@ class LookupPageDriver(
         failed = true
         generation++
         handler.removeCallbacks(poll)
+        handler.removeCallbacks(pageTimeout)
         listener.onPageProblem(problem)
     }
 
     private fun handlePageFinished(url: String?) {
+        DebugLog.log(
+            "lookup",
+            "page finished allowed=${LookupHost.isAllowed(url)} path=${url?.let { pathOf(it) }} " +
+                "progress=${webView.progress} submitted=$submitted",
+        )
         if (failed || url == null || !LookupHost.isAllowed(url)) return
         if (submitted) {
             if (resultHandled) return
@@ -196,10 +210,19 @@ class LookupPageDriver(
         val gen = generation
         webView.evaluateJavascript(LookupScript.OUTER_HTML) { raw ->
             if (gen != generation) return@evaluateJavascript
-            val html = LookupScript.decodeString(raw)
-                ?: return@evaluateJavascript fail(RefreshViewModel.PageProblem.Unexpected)
+            val html = LookupScript.decodeString(raw) ?: run {
+                DebugLog.log("lookup", "outer html unavailable raw=${raw?.take(40)}")
+                return@evaluateJavascript fail(RefreshViewModel.PageProblem.Unexpected)
+            }
             if (submitted) {
+                // 読み込み途中の空の文書なら、次の onPageFinished を待つ
+                if (isBlankDocument(html)) {
+                    DebugLog.log("lookup", "blank result page length=${html.length}")
+                    resultHandled = false
+                    return@evaluateJavascript
+                }
                 handler.removeCallbacks(poll)
+                handler.removeCallbacks(pageTimeout)
                 listener.onResultPage(html, url, CookieManager.getInstance().getCookie(url))
             } else {
                 handleInputPage(html, gen)
@@ -210,7 +233,17 @@ class LookupPageDriver(
     private fun handleInputPage(html: String, gen: Int) {
         val doc = Jsoup.parse(html)
         if (ResultParser.isMaintenance(doc)) return fail(RefreshViewModel.PageProblem.Maintenance)
-        if (!ResultParser.isInputForm(doc)) return fail(RefreshViewModel.PageProblem.Unexpected)
+        if (!ResultParser.isInputForm(doc)) {
+            DebugLog.log("lookup", "not input page length=${html.length} title=${doc.title()} body=${doc.body()?.childrenSize()}")
+            // WebView は読み込みの途中（空の文書）でも onPageFinished を呼ぶことがあるので、中身の無いページなら
+            // 次の onPageFinished を待つ。中身のある別のページなら想定外として終える
+            if (isBlankDocument(html)) {
+                inputHandled = false
+                return
+            }
+            return fail(RefreshViewModel.PageProblem.Unexpected)
+        }
+        handler.removeCallbacks(pageTimeout)
         val code = code9 ?: return
         val script = runCatching { LookupScript.fill(code, agree) }.getOrNull()
             ?: return fail(RefreshViewModel.PageProblem.Unexpected)
@@ -236,6 +269,8 @@ class LookupPageDriver(
 
     private fun submit(gen: Int) {
         submitted = true
+        handler.removeCallbacks(pageTimeout)
+        handler.postDelayed(pageTimeout, PAGE_TIMEOUT_MILLIS)
         listener.onSubmitting()
         webView.evaluateJavascript(LookupScript.SUBMIT) { raw ->
             if (gen != generation) return@evaluateJavascript
@@ -244,6 +279,7 @@ class LookupPageDriver(
                 LookupScript.RESULT_NO_TOKEN -> {
                     // 送る直前にトークンの期限が切れた。もう一度チェックしてもらう
                     submitted = false
+                    handler.removeCallbacks(pageTimeout)
                     listener.onInputReady()
                     handler.postDelayed(poll, POLL_MILLIS)
                 }
@@ -255,8 +291,13 @@ class LookupPageDriver(
         }
     }
 
+    private fun isBlankDocument(html: String): Boolean = (Jsoup.parse(html).body()?.childrenSize() ?: 0) == 0
+
+    private fun pathOf(url: String): String = runCatching { java.net.URI(url).path }.getOrNull() ?: "?"
+
     private companion object {
         const val POLL_MILLIS = 500L
+        const val PAGE_TIMEOUT_MILLIS = 30_000L
         const val HTTP_SERVICE_UNAVAILABLE = 503
     }
 }

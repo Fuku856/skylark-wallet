@@ -11,6 +11,9 @@ sealed interface LookupOutcome {
     /** ご優待番号が無効だった。 */
     data class InvalidCode(val message: String?) : LookupOutcome
 
+    /** サイトがこのご優待番号の取り扱いを一時停止している。[message] はサイトの案内（問い合わせ先を含む）。 */
+    data class Suspended(val message: String) : LookupOutcome
+
     /** サイトがメンテナンス中。 */
     data object Maintenance : LookupOutcome
 

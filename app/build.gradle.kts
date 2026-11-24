@@ -32,6 +32,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 配布版（release）と並べて端末に入れられるよう、パッケージ名を変える
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // KEYSTORE_FILE があるときだけ署名する（ローカルでは未署名の release をビルドできるように）
             if (System.getenv("KEYSTORE_FILE") != null) {

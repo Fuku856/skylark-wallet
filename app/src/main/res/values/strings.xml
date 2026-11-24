@@ -73,6 +73,7 @@
     <string name="refresh_nothing">更新できる優待券がありません</string>
     <string name="error_network">通信できませんでした。電波の状態を確認してください。</string>
     <string name="error_invalid_code">ご優待番号が無効です。</string>
+    <string name="error_suspended">サイトがこのご優待番号の取り扱いを一時停止しています。券に表示したサイトの案内をご確認ください。</string>
     <string name="error_maintenance">サイトがメンテナンス中です。時間をおいてお試しください。</string>
     <string name="error_parse">結果を読み取れませんでした。サイトの仕様が変わった可能性があります。</string>
     <string name="error_unknown">照会に失敗しました。</string>
