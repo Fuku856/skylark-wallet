@@ -235,7 +235,7 @@ class RefreshViewModel @Inject constructor(
                 startCurrent(retrying = true, retryMessage = outcome.message)
             }
             is LookupOutcome.InvalidCode -> {
-                DebugLog.log("lookup", "outcome=invalid_code")
+                DebugLog.log("lookup", "outcome=invalid_code message=${outcome.message}")
                 _events.send(Event.Failed(R.string.error_invalid_code, outcome.message))
                 if (mode == Mode.Batch) next(afterSubmit = true) else finish()
             }
