@@ -20,3 +20,22 @@ fun WebView.applySafeSettings(javaScriptEnabled: Boolean) {
         saveFormData = false
     }
 }
+
+/**
+ * 照会（サイトの入力画面）用の設定。reCAPTCHA が動くよう JavaScript と DOM ストレージだけを有効にし、
+ * それ以外は [applySafeSettings] と同じく無効にする。User-Agent は変えない。
+ *
+ * サイトは `viewport width=1024` を指定しているが、そのまま縮小表示すると reCAPTCHA のチェックボックスが
+ * 小さくなりすぎるため、端末の幅で描く（はみ出す部分は横スクロール・ピンチズームで見られる）。
+ */
+@SuppressLint("SetJavaScriptEnabled")
+fun WebView.applyLookupSettings() {
+    applySafeSettings(javaScriptEnabled = true)
+    settings.apply {
+        domStorageEnabled = true
+        useWideViewPort = false
+        loadWithOverviewMode = false
+        builtInZoomControls = true
+        displayZoomControls = false
+    }
+}

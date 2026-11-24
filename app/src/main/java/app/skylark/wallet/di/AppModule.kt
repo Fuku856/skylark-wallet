@@ -11,12 +11,9 @@ import app.skylark.wallet.data.local.crypto.CryptoManager
 import app.skylark.wallet.data.local.crypto.StringCipher
 import app.skylark.wallet.data.local.db.AppDatabase
 import app.skylark.wallet.data.local.db.VoucherDao
+import app.skylark.wallet.data.remote.BarcodeImageInliner
 import app.skylark.wallet.data.remote.LookupLogInterceptor
-import app.skylark.wallet.data.remote.SkylarkEndpoint
-import app.skylark.wallet.data.remote.SkylarkScraper
-import app.skylark.wallet.data.repository.SkylarkLookupRepository
 import app.skylark.wallet.data.repository.VoucherRepositoryImpl
-import app.skylark.wallet.domain.repository.LookupRepository
 import app.skylark.wallet.domain.repository.VoucherRepository
 import dagger.Binds
 import dagger.Module
@@ -24,7 +21,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
@@ -34,7 +30,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "https://www.skylarkyutaiken.com/"
     private const val HTTP_LOG_TAG = "OkHttp"
     private val LONG_DIGITS = Regex("\\d{9,}")
     private const val USER_AGENT =
@@ -72,12 +67,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideEndpoint(): SkylarkEndpoint = SkylarkEndpoint(BASE_URL.toHttpUrl())
-
-    @Provides
-    @Singleton
-    fun provideScraper(client: OkHttpClient, endpoint: SkylarkEndpoint): SkylarkScraper =
-        SkylarkScraper(client, endpoint)
+    fun provideBarcodeImageInliner(client: OkHttpClient): BarcodeImageInliner = BarcodeImageInliner(client)
 
     @Provides
     @Singleton
@@ -99,9 +89,6 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindVoucherRepository(impl: VoucherRepositoryImpl): VoucherRepository
-
-    @Binds
-    abstract fun bindLookupRepository(impl: SkylarkLookupRepository): LookupRepository
 
     @Binds
     abstract fun bindCaptchaSolver(impl: OnnxCaptchaSolver): CaptchaSolver

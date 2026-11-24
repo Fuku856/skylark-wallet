@@ -31,6 +31,7 @@ object ResultParser {
     const val SELECTOR_EXPIRY = ".limit"
     const val SELECTOR_ERROR = "p.err"
     const val SELECTOR_MAINTENANCE = "#gh.mainte"
+    const val SELECTOR_INPUT_FORM = "form[name=codeform]"
 
     val TOKYO: ZoneId = ZoneId.of("Asia/Tokyo")
 
@@ -72,9 +73,7 @@ object ResultParser {
         }
 
         // 入力フォームが再表示された場合はエラー
-        val formShown = doc.selectFirst("input[name=${InputForm.DEFAULT_CAPTCHA_FIELD}]") != null ||
-            doc.selectFirst("img[src*=captcha]") != null
-        if (formShown) {
+        if (isInputForm(doc)) {
             val messages = doc.select(SELECTOR_ERROR).map { it.text().trim() }.filter { it.isNotEmpty() }
             // 番号のエラーが1つでもあれば番号の誤り。それ以外（文言が想定外のものを含む）は CAPTCHA の不一致として
             // 扱い、有効な券を「無効」と記録しないようにする
@@ -88,6 +87,28 @@ object ResultParser {
 
         if (text.contains("メンテナンス中")) return Outcome.Maintenance
         return Outcome.Unknown
+    }
+
+    /** 入力画面（ご優待番号のフォーム）か。2026-11 以降の reCAPTCHA 版と、それ以前の画像 CAPTCHA 版の両方を見る。 */
+    fun isInputForm(doc: Document): Boolean =
+        doc.selectFirst(SELECTOR_INPUT_FORM) != null ||
+            doc.selectFirst(".g-recaptcha, input[name=g-recaptcha-response]") != null ||
+            doc.selectFirst("input[name=captchakey]") != null
+
+    /**
+     * 結果画面の各項目がセレクタで取れたか（`selector`）、本文の正規表現で取れたか（`text`）、取れなかったか（`none`）。
+     * セレクタは推定なので、実物で当たっているかをデバッグログで確かめるために使う。値そのものは含めない。
+     */
+    fun selectorReport(html: String): String {
+        val doc = Jsoup.parse(html)
+        fun hit(selector: String) = if (doc.selectFirst(selector) != null) "selector" else "text"
+        return listOf(
+            "balance" to hit(SELECTOR_BALANCE),
+            "barcode" to hit(SELECTOR_BARCODE_NUMBER),
+            "barcodeImage" to if (doc.selectFirst(SELECTOR_BARCODE_IMAGE) != null) "selector" else "none",
+            "expiry" to hit(SELECTOR_EXPIRY),
+            "checkedAt" to hit(SELECTOR_CHECKED_AT),
+        ).joinToString(" ") { (k, v) -> "$k=$v" }
     }
 
     /** バーコード画像の URL（相対パスのまま）。WebView 用に埋め込む際に使う。 */
