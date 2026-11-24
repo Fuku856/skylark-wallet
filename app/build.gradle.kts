@@ -112,7 +112,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.okhttp)
-    implementation(libs.okhttp.java.net.cookiejar)
     implementation(libs.okhttp.logging)
     implementation(libs.jsoup)
     implementation(libs.zxing.core)

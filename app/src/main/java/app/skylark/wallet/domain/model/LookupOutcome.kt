@@ -1,11 +1,11 @@
 package app.skylark.wallet.domain.model
 
-/** 1回の POST（照会）の結果。 */
+/** 1回の照会（送信後の結果ページ）の結果。 */
 sealed interface LookupOutcome {
     /** 照会成功。[html] は WebView 表示用に画像を埋め込んだ結果 HTML。 */
     data class Success(val result: VoucherResult, val html: String) : LookupOutcome
 
-    /** 画像の番号が一致しなかった。同じセッションで再入力できる。 */
+    /** 認証（reCAPTCHA）が通らず入力画面が再表示された。入力画面を開き直して、もう一度チェックしてもらう。 */
     data class CaptchaMismatch(val message: String?) : LookupOutcome
 
     /** ご優待番号が無効だった。 */

@@ -22,7 +22,7 @@ import app.skylark.wallet.data.local.prefs.SettingsRepository
 import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.ThemeMode
 import app.skylark.wallet.ui.SkylarkRoot
-import app.skylark.wallet.ui.captcha.RefreshViewModel
+import app.skylark.wallet.ui.lookup.RefreshViewModel
 import app.skylark.wallet.ui.lock.BiometricAuth
 import app.skylark.wallet.ui.lock.LockScreen
 import app.skylark.wallet.ui.lock.LockViewModel

@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -19,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.IntOffset
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -35,11 +38,11 @@ import app.skylark.wallet.diagnostics.DebugLog
 import app.skylark.wallet.domain.model.AppSettings
 import app.skylark.wallet.ui.barcode.BarcodeScreen
 import app.skylark.wallet.ui.barcode.BarcodeViewModel
-import app.skylark.wallet.ui.captcha.AutoCaptchaFailedDialog
-import app.skylark.wallet.ui.captcha.CaptchaSheet
-import app.skylark.wallet.ui.captcha.RefreshViewModel
 import app.skylark.wallet.ui.common.Format
 import app.skylark.wallet.ui.home.HomeScreen
+import app.skylark.wallet.ui.lookup.LookupOverlay
+import app.skylark.wallet.ui.lookup.LookupPageListener
+import app.skylark.wallet.ui.lookup.RefreshViewModel
 import app.skylark.wallet.ui.onboarding.TermsScreen
 import app.skylark.wallet.ui.onboarding.TermsWebViewScreen
 import app.skylark.wallet.ui.settings.SettingsScreen
@@ -137,106 +140,110 @@ fun SkylarkRoot(settings: AppSettings, refreshViewModel: RefreshViewModel) {
     // 開始画面は最初の表示時に決める（同意後に NavHost のグラフを作り直さないため）
     val startDestination = remember { if (settings.termsPrompted) Routes.HOME else Routes.TERMS }
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination,
-        enterTransition = { slideInHorizontally(slideSpec) { it / 4 } + fadeIn(fadeSpec) },
-        exitTransition = { fadeOut(fadeSpec) },
-        popEnterTransition = { fadeIn(fadeSpec) },
-        popExitTransition = { slideOutHorizontally(slideSpec) { it / 4 } + fadeOut(fadeSpec) },
-        // 戻るジェスチャー中は、戻り先の画面を後ろに出したまま今の画面を縮め、指の動く向きへ少し寄せる
-        predictivePopEnterTransition = { EnterTransition.None },
-        predictivePopExitTransition = { swipeEdge ->
-            val direction = if (swipeEdge == NavigationEvent.EDGE_RIGHT) -1 else 1
-            scaleOut(predictiveScaleSpec, targetScale = 0.9f) +
-                slideOutHorizontally(predictiveOffsetSpec) { direction * it / 8 } +
-                fadeOut(predictiveFadeSpec)
-        },
-    ) {
-        composable(Routes.TERMS) {
-            val settingsViewModel: SettingsViewModel = hiltViewModel()
-            // 初回起動では TERMS が開始画面で戻り先が無いため、pop せずに HOME へ置き換える
-            val leave = {
-                if (navController.previousBackStackEntry != null) {
-                    navController.popBackStack()
-                } else {
-                    navController.navigate(Routes.HOME) { popUpTo(Routes.TERMS) { inclusive = true } }
+    // 照会中は WebView の画面を NavHost の上に重ねる
+    Box(Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            enterTransition = { slideInHorizontally(slideSpec) { it / 4 } + fadeIn(fadeSpec) },
+            exitTransition = { fadeOut(fadeSpec) },
+            popEnterTransition = { fadeIn(fadeSpec) },
+            popExitTransition = { slideOutHorizontally(slideSpec) { it / 4 } + fadeOut(fadeSpec) },
+            // 戻るジェスチャー中は、戻り先の画面を後ろに出したまま今の画面を縮め、指の動く向きへ少し寄せる
+            predictivePopEnterTransition = { EnterTransition.None },
+            predictivePopExitTransition = { swipeEdge ->
+                val direction = if (swipeEdge == NavigationEvent.EDGE_RIGHT) -1 else 1
+                scaleOut(predictiveScaleSpec, targetScale = 0.9f) +
+                    slideOutHorizontally(predictiveOffsetSpec) { direction * it / 8 } +
+                    fadeOut(predictiveFadeSpec)
+            },
+        ) {
+            composable(Routes.TERMS) {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                // 初回起動では TERMS が開始画面で戻り先が無いため、pop せずに HOME へ置き換える
+                val leave = {
+                    if (navController.previousBackStackEntry != null) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(Routes.HOME) { popUpTo(Routes.TERMS) { inclusive = true } }
+                    }
+                }
+                TermsScreen(
+                    alreadyAgreed = settings.termsAgreed,
+                    onOpenTerms = { navController.navigate(Routes.TERMS_WEB) },
+                    onAgree = {
+                        settingsViewModel.setTermsAgreed(true)
+                        leave()
+                    },
+                    onDecline = {
+                        settingsViewModel.setTermsAgreed(false)
+                        leave()
+                    },
+                )
+            }
+            composable(Routes.TERMS_WEB) {
+                TermsWebViewScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.HOME) {
+                val settingsViewModel: SettingsViewModel = hiltViewModel()
+                HomeScreen(
+                    snackbarHostState = snackbarHostState,
+                    onRefreshOne = { refreshViewModel.refreshOne(it) },
+                    onRefreshAll = refreshViewModel::refreshAll,
+                    onOpenBarcode = { navController.navigate(Routes.barcode(it)) },
+                    onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                    autoCaptchaEnabled = settings.autoCaptcha,
+                    onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
+                    debugLogEnabled = settings.debugLog,
+                    onToggleDebugLog = settingsViewModel::setDebugLog,
+                )
+            }
+            composable(
+                Routes.BARCODE,
+                arguments = listOf(
+                    navArgument(BarcodeViewModel.ARG_ID) {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) {
+                BarcodeScreen(
+                    snackbarHostState = snackbarHostState,
+                    onBack = { navController.popBackStack() },
+                    onOpenSaved = { navController.navigate(Routes.official(it)) },
+                    onOpenLatest = { refreshViewModel.refreshOne(it, official = true) },
+                )
+            }
+            composable(
+                Routes.OFFICIAL,
+                arguments = listOf(navArgument(OfficialViewModel.ARG_ID) { type = NavType.StringType }),
+            ) {
+                OfficialWebViewScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenTerms = { navController.navigate(Routes.TERMS) },
+                )
+            }
+        }
+
+        (refreshState as? RefreshViewModel.UiState.Active)?.let { active ->
+            val listener = remember(refreshViewModel) {
+                object : LookupPageListener {
+                    override fun onInputReady() = refreshViewModel.onInputReady()
+                    override fun onSubmitting() = refreshViewModel.onSubmitting()
+                    override fun onResultPage(html: String, url: String, cookie: String?) =
+                        refreshViewModel.onResultPage(html, url, cookie)
+                    override fun onPageProblem(problem: RefreshViewModel.PageProblem) =
+                        refreshViewModel.onPageProblem(problem)
                 }
             }
-            TermsScreen(
-                alreadyAgreed = settings.termsAgreed,
-                onOpenTerms = { navController.navigate(Routes.TERMS_WEB) },
-                onAgree = {
-                    settingsViewModel.setTermsAgreed(true)
-                    leave()
-                },
-                onDecline = {
-                    settingsViewModel.setTermsAgreed(false)
-                    leave()
-                },
-            )
-        }
-        composable(Routes.TERMS_WEB) {
-            TermsWebViewScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Routes.HOME) {
-            val settingsViewModel: SettingsViewModel = hiltViewModel()
-            HomeScreen(
-                snackbarHostState = snackbarHostState,
-                onRefreshOne = { refreshViewModel.refreshOne(it) },
-                onRefreshAll = refreshViewModel::refreshAll,
-                onOpenBarcode = { navController.navigate(Routes.barcode(it)) },
-                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                autoCaptchaEnabled = settings.autoCaptcha,
-                onToggleAutoCaptcha = settingsViewModel::setAutoCaptcha,
-                debugLogEnabled = settings.debugLog,
-                onToggleDebugLog = settingsViewModel::setDebugLog,
-            )
-        }
-        composable(
-            Routes.BARCODE,
-            arguments = listOf(
-                navArgument(BarcodeViewModel.ARG_ID) {
-                    type = NavType.StringType
-                    defaultValue = ""
-                },
-            ),
-        ) {
-            BarcodeScreen(
-                snackbarHostState = snackbarHostState,
-                onBack = { navController.popBackStack() },
-                onOpenSaved = { navController.navigate(Routes.official(it)) },
-                onOpenLatest = { refreshViewModel.refreshOne(it, official = true) },
-            )
-        }
-        composable(
-            Routes.OFFICIAL,
-            arguments = listOf(navArgument(OfficialViewModel.ARG_ID) { type = NavType.StringType }),
-        ) {
-            OfficialWebViewScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Routes.SETTINGS) {
-            SettingsScreen(
-                onBack = { navController.popBackStack() },
-                onOpenTerms = { navController.navigate(Routes.TERMS) },
-            )
-        }
-    }
-
-    (refreshState as? RefreshViewModel.UiState.Active)?.let { active ->
-        if (active.phase is RefreshViewModel.Phase.AutoCaptchaLimitReached) {
-            AutoCaptchaFailedDialog(
-                canSkip = active.progress != null,
-                onRetry = refreshViewModel::retryAutoCaptcha,
-                onManual = refreshViewModel::fallbackToManual,
-                onSkip = refreshViewModel::skip,
-                onCancel = refreshViewModel::cancel,
-            )
-        } else {
-            CaptchaSheet(
+            LookupOverlay(
                 state = active,
-                onSubmit = refreshViewModel::submit,
-                onChangeImage = refreshViewModel::changeCaptcha,
+                termsAgreed = refreshViewModel.termsAgreed,
+                listener = listener,
+                snackbarHostState = snackbarHostState,
                 onSkip = refreshViewModel::skip,
                 onCancel = refreshViewModel::cancel,
             )

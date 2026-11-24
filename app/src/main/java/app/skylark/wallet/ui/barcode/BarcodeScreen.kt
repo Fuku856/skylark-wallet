@@ -150,7 +150,7 @@ private fun BarcodePager(
         ) {
             if (state.vouchers.size > 1) {
                 Text(
-                    stringResource(R.string.captcha_progress, pagerState.currentPage + 1, state.vouchers.size),
+                    stringResource(R.string.barcode_position, pagerState.currentPage + 1, state.vouchers.size),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.width(16.dp))

@@ -3,6 +3,7 @@ package app.skylark.wallet.data.remote
 import app.skylark.wallet.testutil.Fixtures
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -46,6 +47,36 @@ class ResultParserTest {
     @Test
     fun `treats redisplayed form without error as captcha mismatch`() {
         assertEquals(ResultParser.Outcome.CaptchaMismatch(null), ResultParser.parse(Fixtures.read("input.html")))
+    }
+
+    @Test
+    fun `detects recaptcha input form`() {
+        assertTrue(ResultParser.isInputForm(Jsoup.parse(Fixtures.read("input.html"))))
+        assertFalse(ResultParser.isInputForm(Jsoup.parse(Fixtures.read("result_sample.html"))))
+    }
+
+    @Test
+    fun `recaptcha form with verification error is captcha mismatch`() {
+        val html = Fixtures.read("input.html")
+            .replace("<div class=\"notice\">", "<p class=\"err\">認証に失敗しました。</p><div class=\"notice\">")
+
+        assertEquals(ResultParser.Outcome.CaptchaMismatch("認証に失敗しました。"), ResultParser.parse(html))
+    }
+
+    @Test
+    fun `recaptcha form with code error is invalid code`() {
+        val html = Fixtures.read("input.html")
+            .replace("<div class=\"notice\">", "<p class=\"err\">ご優待番号が正しくありません。</p><div class=\"notice\">")
+
+        assertEquals(ResultParser.Outcome.InvalidCode("ご優待番号が正しくありません。"), ResultParser.parse(html))
+    }
+
+    @Test
+    fun `selector report names how each field was found`() {
+        val report = ResultParser.selectorReport(Fixtures.read("result_sample.html"))
+        assertTrue(report.contains("balance="))
+        assertTrue(report.contains("barcodeImage=selector"))
+        assertFalse(report.contains("6674577439187"))
     }
 
     @Test
